@@ -82,6 +82,17 @@ if (typeof window !== 'undefined') {
       console.log('🔍 Found Supabase-related keys:', sbKeys);
     }
   }
+
+  // PWA Detection: Check if running as installed PWA
+  const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+               window.navigator.standalone === true ||
+               document.referrer.includes('android-app://');
+  console.log('📱 Running as PWA:', isPWA);
+
+  // Check for OAuth tokens in URL (PWA callback)
+  if (window.location.hash.includes('access_token') || window.location.search.includes('access_token')) {
+    console.log('🔐 OAuth tokens detected in URL - callback in progress');
+  }
 }
 
 // Configuration constants

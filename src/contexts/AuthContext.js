@@ -207,12 +207,20 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (!authService.isMockMode() && authService.supabase) {
       console.log('🔄 AuthContext: Setting up Supabase auth listener');
+      console.log('🔄 Current URL:', window.location.href);
 
       // Marcar que estamos cargando
       dispatch({ type: 'AUTH_LOADING' });
 
       let isProcessing = false; // Prevent double processing
       let initialCheckDone = false; // Track if we've done the initial check
+
+      // Check for OAuth tokens in URL immediately (PWA fix)
+      const urlHasTokens = window.location.hash.includes('access_token') ||
+                          window.location.search.includes('access_token');
+      if (urlHasTokens) {
+        console.log('🔐 AuthContext: Found tokens in URL, waiting for setSession...');
+      }
 
       const { data: { subscription } } = authService.supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('🔐 AuthContext detected auth change:', event, session?.user?.email || 'no session');
@@ -326,8 +334,13 @@ export const AuthProvider = ({ children }) => {
 
       // Verificación inmediata de sesión (por si el listener no dispara INITIAL_SESSION)
       const checkExistingSession = async () => {
-        // Dar un pequeño delay para que el listener tenga chance de procesar primero
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Si hay tokens en la URL, dar más tiempo para que se procesen
+        const hasUrlTokens = window.location.hash.includes('access_token') ||
+                            window.location.search.includes('access_token');
+        const waitTime = hasUrlTokens ? 2000 : 500;
+
+        console.log(`🔍 Waiting ${waitTime}ms before checking session (hasUrlTokens: ${hasUrlTokens})`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
 
         if (!initialCheckDone) {
           console.log('🔍 Checking for existing session directly...');
@@ -386,14 +399,19 @@ export const AuthProvider = ({ children }) => {
 
       checkExistingSession();
 
-      // Fallback adicional: si después de 3 segundos aún no se procesó nada
+      // Fallback adicional: si después de X segundos aún no se procesó nada
+      // Dar más tiempo si hay tokens en la URL (OAuth callback)
+      const hasUrlTokens = window.location.hash.includes('access_token') ||
+                          window.location.search.includes('access_token');
+      const fallbackTimeMs = hasUrlTokens ? 8000 : 3000;
+
       const fallbackTimeout = setTimeout(() => {
         if (!initialCheckDone) {
-          console.log('⚠️ Fallback timeout: setting anonymous');
+          console.log(`⚠️ Fallback timeout (${fallbackTimeMs}ms): setting anonymous`);
           dispatch({ type: 'SET_ANONYMOUS' });
           initialCheckDone = true;
         }
-      }, 3000);
+      }, fallbackTimeMs);
 
       return () => {
         console.log('🧹 Cleaning up Supabase auth listener');
