@@ -219,7 +219,30 @@ export const AuthSelectionScreen = ({ onContinueAnonymous }) => {
 
           {/* Terms */}
           <p className="auth-terms mt-6 text-sm text-[#F5DEB3] opacity-60">
-            Al continuar aceptás los términos y condiciones
+            Al continuar aceptás los{' '}
+            <a
+              href="/terms"
+              className="text-[#D4A574] hover:text-[#E6C589] underline transition-colors"
+              onClick={(e) => {
+                e.preventDefault();
+                window.history.pushState({}, '', '/terms');
+                window.location.reload();
+              }}
+            >
+              términos y condiciones
+            </a>
+            {' '}y la{' '}
+            <a
+              href="/privacy"
+              className="text-[#D4A574] hover:text-[#E6C589] underline transition-colors"
+              onClick={(e) => {
+                e.preventDefault();
+                window.history.pushState({}, '', '/privacy');
+                window.location.reload();
+              }}
+            >
+              política de privacidad
+            </a>
           </p>
         </div>
       </div>

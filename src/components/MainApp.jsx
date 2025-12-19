@@ -16,9 +16,10 @@ const MainApp = ({ onShowAuth }) => {
   const tabs = [
     { id: 'home', icon: '🏠', label: 'Inicio' },
     { id: 'play', icon: '🎮', label: 'Anotador' },
-    { id: 'achievements', icon: '🏆', label: 'Logros', authRequired: true },
-    { id: 'stats', icon: '📊', label: 'Stats', authRequired: true },
-    { id: 'social', icon: '👥', label: 'Social', authRequired: true },
+    // Temporarily hidden until fully developed:
+    // { id: 'achievements', icon: '🏆', label: 'Logros', authRequired: true },
+    // { id: 'stats', icon: '📊', label: 'Stats', authRequired: true },
+    // { id: 'social', icon: '👥', label: 'Social', authRequired: true },
     { id: 'profile', icon: '👤', label: 'Perfil', authRequired: true }
   ];
   

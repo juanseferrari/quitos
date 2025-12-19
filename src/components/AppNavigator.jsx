@@ -9,24 +9,46 @@ import OnboardingSlides from './OnboardingSlides';
 import LoadingScreen from './LoadingScreen';
 import AchievementNotificationContainer from './AchievementNotificationContainer';
 import AuthCallbackPage from './AuthCallbackPage';
+import PrivacyPolicy from './PrivacyPolicy';
+import TermsOfService from './TermsOfService';
 
 const AppNavigator = () => {
   const { isLoading, isAuthenticated, isAnonymous, continueAsAnonymous } = useAuth();
   const { getOnboardingStep, shouldShowAuthPrompt } = useAuthNavigation();
   const [currentRoute, setCurrentRoute] = useState('Loading');
-  
+
   // Check if we're on OAuth callback URL
-  const isOAuthCallback = window.location.hash.includes('access_token') || 
+  const isOAuthCallback = window.location.hash.includes('access_token') ||
                          window.location.search.includes('code=') ||
                          window.location.pathname === '/auth/callback';
-  
+
+  // Check for legal pages
+  const isPrivacyPage = window.location.pathname === '/privacy';
+  const isTermsPage = window.location.pathname === '/terms';
+
   useEffect(() => {
     if (!isLoading) {
       const route = getOnboardingStep();
       setCurrentRoute(route);
     }
   }, [isLoading, isAuthenticated, isAnonymous]);
-  
+
+  // Helper to navigate back from legal pages
+  const handleBackFromLegal = () => {
+    window.history.pushState({}, '', '/');
+    window.location.reload();
+  };
+
+  // Handle Privacy Policy page
+  if (isPrivacyPage) {
+    return <PrivacyPolicy onBack={handleBackFromLegal} />;
+  }
+
+  // Handle Terms of Service page
+  if (isTermsPage) {
+    return <TermsOfService onBack={handleBackFromLegal} />;
+  }
+
   // Handle OAuth callback first
   if (isOAuthCallback) {
     return <AuthCallbackPage />;

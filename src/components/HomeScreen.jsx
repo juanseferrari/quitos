@@ -45,7 +45,11 @@ const HomeScreen = ({ onNavigateToPlay, onShowAuth }) => {
       {/* Header */}
       <div className="bg-[#0a0a0a] border-b border-[#D4A574] border-opacity-30 px-4 py-6">
         <div className="text-center">
-          <div className="text-4xl mb-2">👑</div>
+          <img
+            src="/throne-icon.png"
+            alt="Rey del Truco"
+            className="w-16 h-16 mx-auto mb-2 object-contain"
+          />
           <h1 className="text-2xl font-bold text-[#D4A574]">
             REY DEL TRUCO
           </h1>
