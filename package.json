@@ -2,6 +2,10 @@
   "name": "anotador-truco",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": "18.x",
+    "npm": "9.x"
+  },
   "dependencies": {
     "@capacitor/app": "^7.0.1",
     "@capacitor/browser": "^7.0.1",
@@ -25,7 +29,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "heroku-postbuild": "npm run build"
   },
   "browserslist": {
     "production": [
