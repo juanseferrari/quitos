@@ -1,0 +1,16 @@
+{
+  "files": {
+    "main.css": "/static/css/main.ce6f10d2.css",
+    "main.js": "/static/js/main.7367df0b.js",
+    "static/js/488.252b0863.chunk.js": "/static/js/488.252b0863.chunk.js",
+    "static/media/maderafondo.jpg": "/static/media/maderafondo.3805d4df7b26ba5dccbe.jpg",
+    "index.html": "/index.html",
+    "main.ce6f10d2.css.map": "/static/css/main.ce6f10d2.css.map",
+    "main.7367df0b.js.map": "/static/js/main.7367df0b.js.map",
+    "488.252b0863.chunk.js.map": "/static/js/488.252b0863.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.ce6f10d2.css",
+    "static/js/main.7367df0b.js"
+  ]
+}

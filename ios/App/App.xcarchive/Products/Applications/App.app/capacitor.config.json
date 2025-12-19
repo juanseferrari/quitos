@@ -1,0 +1,27 @@
+{
+	"appId": "com.reydeltruco.app",
+	"appName": "Rey del Truco",
+	"webDir": "build",
+	"ios": {
+		"contentInset": "never",
+		"scrollEnabled": false,
+		"backgroundColor": "#1a1a1a",
+		"allowsLinkPreview": false,
+		"presentationStyle": "fullscreen",
+		"webViewConfiguration": {
+			"allowsInlineMediaPlayback": true,
+			"allowsAirPlayForMediaPlayback": false
+		}
+	},
+	"plugins": {
+		"SplashScreen": {
+			"launchShowDuration": 1000,
+			"backgroundColor": "#1a1a1a",
+			"showSpinner": false
+		},
+		"StatusBar": {
+			"style": "light"
+		}
+	},
+	"packageClassList": []
+}

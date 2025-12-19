@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Crear Favicon Rey del Truco</title>
+</head>
+<body>
+    <h1>Generador de Favicon</h1>
+    <canvas id="faviconCanvas" width="32" height="32" style="border: 1px solid #ccc; image-rendering: pixelated; width: 128px; height: 128px;"></canvas>
+    <br><br>
+    <button onclick="downloadFavicon()">Descargar favicon.ico</button>
+
+    <script>
+        function createFavicon() {
+            const canvas = document.getElementById('faviconCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Fondo negro
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, 32, 32);
+            
+            // Trono simplificado para 32x32
+            ctx.fillStyle = '#D4A574';
+            
+            // Base
+            ctx.fillRect(6, 22, 20, 6);
+            
+            // Respaldo
+            ctx.fillRect(10, 8, 12, 14);
+            
+            // Brazos
+            ctx.fillRect(6, 16, 4, 8);
+            ctx.fillRect(22, 16, 4, 8);
+            
+            // Corona dorada
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(14, 6, 4, 2);
+            ctx.fillRect(13, 4, 2, 2);
+            ctx.fillRect(17, 4, 2, 2);
+            ctx.fillRect(15, 2, 2, 2);
+            
+            // Detalles dorados
+            ctx.fillRect(12, 12, 8, 1);
+            ctx.fillRect(12, 15, 8, 1);
+        }
+        
+        function downloadFavicon() {
+            const canvas = document.getElementById('faviconCanvas');
+            const link = document.createElement('a');
+            link.download = 'favicon.ico';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        // Crear favicon al cargar
+        window.onload = createFavicon;
+    </script>
+</body>
+</html>
