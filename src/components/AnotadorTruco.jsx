@@ -146,7 +146,7 @@ const AnotadorTruco = ({ onShowAuth }) => {
             </div>
             
             {/* Botón Corrección Jugador 1 */}
-            <div className="flex justify-center items-center flex-shrink-0 py-3">
+            <div className="flex justify-center items-center flex-shrink-0 py-1">
               <button
                 onClick={() => restarPunto('nos')}
                 disabled={hayGanador}
@@ -156,10 +156,10 @@ const AnotadorTruco = ({ onShowAuth }) => {
               </button>
             </div>
           </div>
-          
+
           {/* Columna central - Sin trono */}
           <div className="w-4"></div>
-          
+
           {/* Columna Jugador 2 */}
           <div className="flex-1 flex flex-col">
             {/* Header Jugador 2 */}
@@ -182,11 +182,11 @@ const AnotadorTruco = ({ onShowAuth }) => {
                 </span>
               </div>
             </div>
-            
+
             {/* Rayitas Jugador 2 */}
             <div className="flex-1 p-1">
-              <div 
-                className="h-full flex items-center justify-center overflow-hidden cursor-pointer select-none rey-premium-score-area-optimized" 
+              <div
+                className="h-full flex items-center justify-center overflow-hidden cursor-pointer select-none rey-premium-score-area-optimized"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -208,9 +208,9 @@ const AnotadorTruco = ({ onShowAuth }) => {
                 <ScoreDisplay puntos={puntosEllos} puntosTotales={puntosTotales} />
               </div>
             </div>
-            
+
             {/* Botón Corrección Jugador 2 */}
-            <div className="flex justify-center items-center flex-shrink-0 py-3">
+            <div className="flex justify-center items-center flex-shrink-0 py-1">
               <button
                 onClick={() => restarPunto('ellos')}
                 disabled={hayGanador}
@@ -221,9 +221,9 @@ const AnotadorTruco = ({ onShowAuth }) => {
             </div>
           </div>
         </div>
-        
+
         {/* SECCIÓN 4: Controles principales (altura fija mínima) */}
-        <div className="rey-premium-controls-area-compact flex-shrink-0 mt-4">
+        <div className="rey-premium-controls-area-compact flex-shrink-0 mt-1">
           <div className="flex justify-center gap-1 flex-wrap">
             <button
               onClick={() => setMostrarModalFalta(true)}

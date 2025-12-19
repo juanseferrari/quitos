@@ -13,7 +13,7 @@ dotenv.config({ path: join(__dirname, '.env.local') });
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-
+const redirect_url = "https://quitos-a390d6350cca.herokuapp.com/auth/callback"
 console.log('🔐 Testing authentication setup...\n');
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -72,7 +72,7 @@ async function testAuth() {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'http://localhost:3000/auth/callback'
+          redirectTo: redirect_url
         }
       });
       

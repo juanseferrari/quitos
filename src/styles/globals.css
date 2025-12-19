@@ -203,7 +203,7 @@ html, body {
 .ios-tab-bar {
   /* Core layout - ultra compacto */
   min-height: auto;
-  padding: 4px 12px 6px 12px;
+  padding: 2px 12px 4px 12px;
 
   /* Visual styling */
   background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
@@ -219,7 +219,7 @@ html, body {
 /* Mobile: tab bar ultra compacto */
 @media (max-width: 640px) {
   .ios-tab-bar {
-    padding: 1px 4px 2px 4px;
+    padding: 0px 4px 0px 4px;
   }
 }
 
@@ -350,21 +350,21 @@ html, body {
 /* =================================================================
    📱 OPTIMIZACIÓN ESPECÍFICA PARA iPHONE SE (375x667px)
    ================================================================= */
-@media (max-width: 414px) and (max-height: 667px) {
-  /* Variables CSS optimizadas para iPhone SE */
+@media (max-width: 414px) and (max-height: 736px) {
+  /* Variables CSS optimizadas para iPhone SE y similares */
   :root {
-    --tab-bar-height: 50px !important;
-    --game-content-height: calc(var(--safe-height) - 30px) !important;
+    --tab-bar-height: 40px !important;
+    --game-content-height: calc(var(--safe-height) - 20px) !important;
   }
-  
+
   /* Contenedor principal - optimización crítica */
   .rey-premium-game-container {
-    height: calc(100dvh - 20px) !important;
-    margin: 4px !important;
-    padding: 8px !important;
+    height: calc(100dvh - 15px) !important;
+    margin: 2px !important;
+    padding: 4px !important;
     border-radius: 12px;
   }
-  
+
   /* Modales ultra-compactos para iPhone SE */
   .rey-premium-modal-container {
     padding: 0.75rem !important;
@@ -372,31 +372,31 @@ html, body {
     max-height: 70vh !important;
     max-width: min(95vw, 340px) !important;
   }
-  
+
   .rey-premium-modal-title {
     font-size: 1.125rem !important;
     margin-bottom: 0.5rem !important;
   }
-  
+
   .rey-premium-modal-text {
     font-size: 0.875rem !important;
     margin-bottom: 1rem !important;
   }
-  
+
   .rey-premium-modal-button {
     font-size: 0.875rem !important;
     padding: 0.5rem 1rem !important;
   }
-  
+
   .rey-premium-modal-icon {
     font-size: 2rem !important;
     margin-bottom: 0.5rem !important;
   }
-  
+
   /* Área de controles - padding mínimo pero funcional */
   .rey-premium-controls-area {
-    padding: 4px 6px !important;
-    margin-top: 2px !important;
+    padding: 2px 4px !important;
+    margin-top: 0 !important;
     margin-bottom: 2px !important;
   }
   
@@ -8087,7 +8087,7 @@ html {
 
 /* NUEVA: Contenedor optimizado para viewport completo */
 .rey-premium-container-mobile-optimized {
-  padding: 4px 8px;
+  padding: 2px 6px;
   gap: 0;
 }
 
@@ -8169,8 +8169,9 @@ html {
   backdrop-filter: blur(10px);
   border: 1px solid rgba(212, 165, 116, 0.1);
   border-radius: 8px;
-  padding: 4px 6px;
-  margin-top: 2px;
+  padding: 3px 6px;
+  margin-top: 0;
+  margin-bottom: 2px;
   /* Asegurar que no se corte */
   flex-shrink: 0;
   min-height: auto;
