@@ -1,5 +1,5 @@
 // src/components/AuthCallbackPage.jsx - OAuth callback handler
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../config/supabase';
 
@@ -7,9 +7,14 @@ const AuthCallbackPage = () => {
   const { isAuthenticated } = useAuth();
   const [status, setStatus] = useState('processing');
   const [error, setError] = useState(null);
+  const processedRef = useRef(false);
 
   // Procesar el callback OAuth activamente
   useEffect(() => {
+    // Evitar procesamiento doble
+    if (processedRef.current) return;
+    processedRef.current = true;
+
     const processOAuthCallback = async () => {
       console.log('🔐 AuthCallbackPage: Processing OAuth callback...');
       console.log('📍 Current URL:', window.location.href);
@@ -51,13 +56,10 @@ const AuthCallbackPage = () => {
           }
 
           console.log('✅ Session set successfully:', data.user?.email);
-
-          // Mark that user has been authenticated
           localStorage.setItem('trucoapp_had_auth', 'true');
-
           setStatus('success');
 
-          // Limpiar la URL y redirigir - usando un reload para asegurar que AuthContext procese la sesión
+          // Limpiar la URL y redirigir
           setTimeout(() => {
             window.history.replaceState({}, document.title, '/');
             window.location.href = '/';
@@ -65,46 +67,71 @@ const AuthCallbackPage = () => {
           return;
         }
 
-        // Si no hay token en URL, intentar obtener la sesión existente
-        console.log('🔍 No token in URL, checking existing session...');
-        const { data: { session }, error: getSessionError } = await supabase.auth.getSession();
+        // Si no hay token en URL, Supabase ya los procesó (detectSessionInUrl: true)
+        // Intentar obtener la sesión que Supabase debería haber creado
+        console.log('🔍 No tokens in URL (Supabase may have processed them), checking session...');
 
-        if (getSessionError) {
-          console.error('🔥 Error getting session:', getSessionError);
+        // Dar tiempo a Supabase para procesar los tokens y crear la sesión
+        // Intentar varias veces con intervalos crecientes
+        const maxAttempts = 5;
+        const delays = [500, 1000, 1500, 2000, 2500];
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          console.log(`🔍 Attempt ${attempt + 1}/${maxAttempts}: Checking for session...`);
+
+          const { data: { session }, error: getSessionError } = await supabase.auth.getSession();
+
+          if (getSessionError) {
+            console.error('🔥 Error getting session:', getSessionError);
+          }
+
+          if (session?.user) {
+            console.log('✅ Session found:', session.user.email);
+            localStorage.setItem('trucoapp_had_auth', 'true');
+            setStatus('success');
+
+            setTimeout(() => {
+              window.history.replaceState({}, document.title, '/');
+              window.location.href = '/';
+            }, 1000);
+            return;
+          }
+
+          // Esperar antes del próximo intento
+          if (attempt < maxAttempts - 1) {
+            console.log(`⏳ No session yet, waiting ${delays[attempt]}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+          }
         }
 
-        if (session?.user) {
-          console.log('✅ Found existing session:', session.user.email);
-          setStatus('success');
-          setTimeout(() => {
-            window.history.replaceState({}, document.title, '/');
-            window.location.href = '/';
-          }, 1500);
-        } else {
-          // No session found, wait a bit for Supabase to process
-          console.log('⏳ No session yet, waiting for Supabase to process...');
+        // Después de todos los intentos, verificar una última vez el estado de auth
+        console.log('⚠️ No session after all attempts, checking auth state one more time...');
 
-          // Esperar 2 segundos y verificar de nuevo
-          await new Promise(resolve => setTimeout(resolve, 2000));
-
-          const { data: { session: retrySession } } = await supabase.auth.getSession();
-
-          if (retrySession?.user) {
-            console.log('✅ Session found on retry:', retrySession.user.email);
+        // Forzar un refresh del token si existe algo en localStorage
+        try {
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshData?.session?.user) {
+            console.log('✅ Session found after refresh:', refreshData.session.user.email);
+            localStorage.setItem('trucoapp_had_auth', 'true');
             setStatus('success');
             setTimeout(() => {
               window.history.replaceState({}, document.title, '/');
               window.location.href = '/';
-            }, 1500);
-          } else {
-            console.log('⚠️ No session after retry, redirecting anyway...');
-            setStatus('timeout');
-            setTimeout(() => {
-              window.history.replaceState({}, document.title, '/');
-              window.location.href = '/';
-            }, 2000);
+            }, 1000);
+            return;
           }
+        } catch (refreshErr) {
+          console.log('⚠️ Refresh session failed:', refreshErr.message);
         }
+
+        // Si aún no hay sesión, redirigir de todos modos
+        console.log('⚠️ No session found, redirecting to home...');
+        setStatus('timeout');
+        setTimeout(() => {
+          window.history.replaceState({}, document.title, '/');
+          window.location.href = '/';
+        }, 2000);
+
       } catch (err) {
         console.error('🔥 Unexpected error in OAuth callback:', err);
         setError(err.message);
