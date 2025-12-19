@@ -207,33 +207,35 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (!authService.isMockMode() && authService.supabase) {
       console.log('🔄 AuthContext: Setting up Supabase auth listener');
-      
+
       let isProcessing = false; // Prevent double processing
-      
+
       const { data: { subscription } } = authService.supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('🔐 AuthContext detected auth change:', event, session?.user?.email);
-        
-        if (event === 'SIGNED_IN' && session?.user && !isProcessing) {
+
+        // Handle sign in, token refresh, and initial session events
+        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session?.user && !isProcessing) {
           isProcessing = true;
-          console.log('✅ Processing authentication (single instance)');
-          
+          console.log(`✅ Processing ${event} event`);
+
           try {
-            // Check if already authenticated to prevent duplicate processing
-            if (state.session.isAuthenticated && state.user.id === session.user.id) {
-              console.log('⚠️ Already authenticated, skipping duplicate processing');
-              isProcessing = false;
-              return;
+            // Cargar perfil del usuario
+            let userProfile = null;
+            try {
+              userProfile = await authService.getUserProfile(session.user.id);
+            } catch (profileError) {
+              console.warn('⚠️ Could not load user profile:', profileError);
             }
-            
+
             const payload = {
               user: {
                 id: session.user.id,
                 email: session.user.email,
-                name: session.user.user_metadata?.full_name || session.user.email.split('@')[0],
-                username: null,
-                avatar: session.user.user_metadata?.avatar_url || null,
-                provider: AUTH_PROVIDERS.GOOGLE,
-                createdAt: new Date().toISOString(),
+                name: userProfile?.name || session.user.user_metadata?.full_name || session.user.email.split('@')[0],
+                username: userProfile?.display_name || null,
+                avatar: userProfile?.avatar_url || session.user.user_metadata?.avatar_url || null,
+                provider: session.user.app_metadata?.provider || AUTH_PROVIDERS.GOOGLE,
+                createdAt: userProfile?.created_at || session.user.created_at,
                 lastLoginAt: new Date().toISOString()
               },
               session: session,
@@ -241,43 +243,46 @@ export const AuthProvider = ({ children }) => {
               refreshToken: session.refresh_token,
               expiresAt: new Date(Date.now() + (session.expires_in || 3600) * 1000).toISOString()
             };
-            
+
             dispatch({
               type: 'AUTH_SUCCESS',
               payload: payload
             });
-            
+
             // Mark that user has been authenticated for future OAuth attempts
             localStorage.setItem('trucoapp_had_auth', 'true');
-            
+
             console.log('✅ AUTH_SUCCESS dispatch completed');
-            
-            // Check for local data migration after successful auth
-            const hasLocalData = () => {
-              const gameState = localStorage.getItem('rey-del-truco-state');
-              if (gameState) {
-                const data = JSON.parse(gameState);
-                return data.localData?.partidasJugadas > 0;
+
+            // Only run migration on fresh sign in, not on token refresh or initial session
+            if (event === 'SIGNED_IN') {
+              // Check for local data migration after successful auth
+              const hasLocalData = () => {
+                const gameState = localStorage.getItem('rey-del-truco-state');
+                if (gameState) {
+                  const data = JSON.parse(gameState);
+                  return data.localData?.partidasJugadas > 0;
+                }
+                return false;
+              };
+
+              if (hasLocalData()) {
+                console.log('🔄 Starting local data migration...');
+                const { startDataMigration } = await import('../services/dataMigration');
+                await startDataMigration(session.user.id);
               }
-              return false;
-            };
-            
-            if (hasLocalData()) {
-              console.log('🔄 Starting local data migration...');
-              const { startDataMigration } = await import('../services/dataMigration');
-              await startDataMigration(session.user.id);
+
+              // Create profile in background (non-blocking)
+              setTimeout(async () => {
+                try {
+                  await authService.ensureUserProfile(session.user);
+                  console.log('✅ Background profile creation completed');
+                } catch (profileError) {
+                  console.error('⚠️ Background profile creation failed:', profileError);
+                }
+              }, 100);
             }
-            
-            // Create profile in background (non-blocking)
-            setTimeout(async () => {
-              try {
-                await authService.ensureUserProfile(session.user);
-                console.log('✅ Background profile creation completed');
-              } catch (profileError) {
-                console.error('⚠️ Background profile creation failed:', profileError);
-              }
-            }, 100);
-            
+
           } catch (error) {
             console.error('🔥 Error in auth state change handler:', error);
           } finally {
@@ -289,19 +294,73 @@ export const AuthProvider = ({ children }) => {
           dispatch({ type: 'LOGOUT' });
         }
       });
-      
+
       return () => {
         console.log('🧹 Cleaning up Supabase auth listener');
         subscription?.unsubscribe();
       };
     }
-  }, [state.session.isAuthenticated, state.user.id]); // Add dependencies to prevent stale closure
+  }, []); // Empty dependency array - listener should only be set up once
   
   const initializeAuth = async () => {
     try {
       dispatch({ type: 'AUTH_LOADING' });
-      
-      // Verificar token existente
+
+      // Primero verificar si hay sesión de Supabase existente
+      if (!authService.isMockMode() && authService.supabase) {
+        console.log('🔄 Checking for existing Supabase session...');
+
+        try {
+          const { data: { session }, error } = await authService.supabase.auth.getSession();
+
+          if (error) {
+            console.error('🔥 Error getting Supabase session:', error);
+          }
+
+          if (session?.user) {
+            console.log('✅ Found existing Supabase session for:', session.user.email);
+
+            // Cargar perfil del usuario
+            let userProfile = null;
+            try {
+              userProfile = await authService.getUserProfile(session.user.id);
+            } catch (profileError) {
+              console.warn('⚠️ Could not load user profile:', profileError);
+            }
+
+            const payload = {
+              user: {
+                id: session.user.id,
+                email: session.user.email,
+                name: userProfile?.name || session.user.user_metadata?.full_name || session.user.email.split('@')[0],
+                username: userProfile?.display_name || null,
+                avatar: userProfile?.avatar_url || session.user.user_metadata?.avatar_url || null,
+                provider: session.user.app_metadata?.provider || AUTH_PROVIDERS.GOOGLE,
+                createdAt: userProfile?.created_at || session.user.created_at,
+                lastLoginAt: new Date().toISOString()
+              },
+              session: session,
+              token: session.access_token,
+              refreshToken: session.refresh_token,
+              expiresAt: new Date(Date.now() + (session.expires_in || 3600) * 1000).toISOString()
+            };
+
+            dispatch({
+              type: 'AUTH_SUCCESS',
+              payload: payload
+            });
+
+            console.log('✅ Session restored successfully');
+            return;
+          } else {
+            console.log('ℹ️ No existing Supabase session found');
+          }
+        } catch (supabaseError) {
+          console.error('🔥 Error checking Supabase session:', supabaseError);
+        }
+      }
+
+      // Fallback: Verificar token existente del mock service
       const token = localStorage.getItem('trucoapp_token');
       if (token) {
         try {
@@ -322,10 +381,10 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('trucoapp_refresh_token');
         }
       }
-      
+
       // Usuario anónimo por defecto
       dispatch({ type: 'SET_ANONYMOUS' });
-      
+
     } catch (error) {
       console.error('Error initializing auth:', error);
       dispatch({ type: 'AUTH_ERROR', payload: { error: error.message } });

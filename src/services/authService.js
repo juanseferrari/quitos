@@ -106,19 +106,11 @@ class AuthService {
 
   // Handle Web OAuth (standard flow)
   async _handleWebOAuth() {
-    // Determine redirect URL based on environment
-    let redirectUrl;
-    if (window.location.hostname === 'localhost') {
-      redirectUrl = 'http://localhost:3000';
-    } else if (window.location.hostname.includes('herokuapp.com')) {
-      redirectUrl = 'https://quitos-a390d6350cca.herokuapp.com';
-    } else {
-      redirectUrl = window.location.origin;
-    }
-
+    const redirectUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:3000'
+      : `${window.location.origin}`;
+      
     console.log('🔐 Starting web OAuth with redirect:', redirectUrl);
-    console.log('🔐 Current origin:', window.location.origin);
-    console.log('🔐 Current hostname:', window.location.hostname);
 
     // Check if user has been authenticated before
     const hasBeenAuthenticated = localStorage.getItem('trucoapp_had_auth') === 'true';
@@ -141,69 +133,25 @@ class AuthService {
     return { success: true, data };
   }
 
-  // Sign in with Email/Password
-  async signInWithEmail(email, password) {
+  // Sign in with Apple (for future implementation)
+  async signInWithApple() {
     if (!this.isConfigured) {
       throw new Error('Supabase not configured');
     }
 
     try {
-      console.log('🔐 Starting email sign in for:', email);
-
-      const { data, error } = await this.supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) throw error;
-
-      this.currentUser = data.user;
-      await this.ensureUserProfile(data.user);
-
-      return { success: true, data };
-    } catch (error) {
-      console.error('🔥 Email sign in error:', error);
-      throw error;
-    }
-  }
-
-  // Sign up with Email/Password
-  async signUpWithEmail(email, password, name = null) {
-    if (!this.isConfigured) {
-      throw new Error('Supabase not configured');
-    }
-
-    try {
-      console.log('🔐 Starting email sign up for:', email);
-
-      const { data, error } = await this.supabase.auth.signUp({
-        email,
-        password,
+      const { data, error } = await this.supabase.auth.signInWithOAuth({
+        provider: 'apple',
         options: {
-          data: {
-            full_name: name || email.split('@')[0]
-          }
+          redirectTo: `${window.location.origin}/auth/callback`
         }
       });
 
       if (error) throw error;
-
-      // Check if email confirmation is required
-      if (data.user && !data.session) {
-        return {
-          success: true,
-          data,
-          needsEmailConfirmation: true,
-          message: 'Revisá tu email para confirmar tu cuenta'
-        };
-      }
-
-      this.currentUser = data.user;
-      await this.ensureUserProfile(data.user);
-
+      
       return { success: true, data };
     } catch (error) {
-      console.error('🔥 Email sign up error:', error);
+      console.error('🔥 Apple sign in error:', error);
       throw error;
     }
   }
@@ -384,81 +332,6 @@ class AuthService {
   // Check if using mock services
   isMockMode() {
     return !this.isConfigured;
-  }
-
-  // Check if username is available
-  async isUsernameAvailable(username) {
-    if (!this.isConfigured) {
-      throw new Error('Supabase not configured');
-    }
-
-    // Normalize username (lowercase, remove spaces)
-    const normalizedUsername = username.toLowerCase().trim().replace(/\s+/g, '');
-
-    // Validate format (alphanumeric, underscores, 3-20 chars)
-    const usernameRegex = /^[a-z0-9_]{3,20}$/;
-    if (!usernameRegex.test(normalizedUsername)) {
-      return {
-        available: false,
-        error: 'El username debe tener entre 3 y 20 caracteres y solo puede contener letras, números y guiones bajos'
-      };
-    }
-
-    try {
-      const { data, error } = await this.supabase
-        .from('users')
-        .select('id')
-        .eq('display_name', normalizedUsername)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      // If data exists, username is taken (unless it's the current user)
-      if (data) {
-        // Check if it's the current user's username
-        const currentProfile = await this.getUserProfile();
-        if (currentProfile && currentProfile.display_name === normalizedUsername) {
-          return { available: true, username: normalizedUsername };
-        }
-        return { available: false, error: 'Este username ya está en uso' };
-      }
-
-      return { available: true, username: normalizedUsername };
-    } catch (error) {
-      console.error('🔥 Check username error:', error);
-      throw error;
-    }
-  }
-
-  // Set username (one-time or update)
-  async setUsername(username) {
-    if (!this.isConfigured || !this.currentUser) {
-      throw new Error('Not authenticated');
-    }
-
-    // Check availability first
-    const availabilityCheck = await this.isUsernameAvailable(username);
-    if (!availabilityCheck.available) {
-      throw new Error(availabilityCheck.error);
-    }
-
-    try {
-      const { data, error } = await this.supabase
-        .from('users')
-        .update({ display_name: availabilityCheck.username })
-        .eq('auth_uid', this.currentUser.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      this.userProfile = data;
-      console.log('✅ Username set successfully:', availabilityCheck.username);
-      return data;
-    } catch (error) {
-      console.error('🔥 Set username error:', error);
-      throw error;
-    }
   }
 }
 
