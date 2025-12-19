@@ -25,6 +25,7 @@ const AnotadorTruco = ({ onShowAuth }) => {
     pantallaActual,
     mostrarModalFalta,
     mostrarModalVictoria,
+    mostrarModalReiniciar,
     
     // Estados derivados
     hayGanador,
@@ -47,6 +48,7 @@ const AnotadorTruco = ({ onShowAuth }) => {
     // Acciones de UI
     setPantallaActual,
     setMostrarModalFalta,
+    setMostrarModalReiniciar,
     
     // Funciones calculadas
     calcularPuntosFalta,
@@ -234,11 +236,7 @@ const AnotadorTruco = ({ onShowAuth }) => {
             <button
               onClick={() => {
                 if (partidaEnProgreso && !hayGanador) {
-                  const confirmReset = window.confirm('¿Seguro que querés reiniciar? Se perderá el progreso actual.');
-                  if (confirmReset) {
-                    nuevoPartido();
-                    setPantallaActual('inicio');
-                  }
+                  setMostrarModalReiniciar(true);
                 } else {
                   setPantallaActual('inicio');
                 }
@@ -336,11 +334,11 @@ const AnotadorTruco = ({ onShowAuth }) => {
         <div className="rey-premium-modal-backdrop">
           <div className="rey-premium-modal-container">
             <div className="rey-premium-modal-icon">🃏</div>
-            
+
             <h2 className="rey-premium-modal-title">
               ¿Quién ganó la falta?
             </h2>
-            
+
             <div className="rey-premium-modal-buttons">
               <button
                 onClick={() => {
@@ -356,7 +354,7 @@ const AnotadorTruco = ({ onShowAuth }) => {
                   </span>
                 </div>
               </button>
-              
+
               <button
                 onClick={() => {
                   faltaEnvido('ellos');
@@ -371,9 +369,46 @@ const AnotadorTruco = ({ onShowAuth }) => {
                   </span>
                 </div>
               </button>
-              
+
               <button
                 onClick={() => setMostrarModalFalta(false)}
+                className="rey-premium-modal-button rey-premium-modal-button-secondary"
+              >
+                CANCELAR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Reiniciar */}
+      {mostrarModalReiniciar && (
+        <div className="rey-premium-modal-backdrop">
+          <div className="rey-premium-modal-container">
+            <div className="rey-premium-modal-icon">🔄</div>
+
+            <h2 className="rey-premium-modal-title">
+              ¿Reiniciar partido?
+            </h2>
+
+            <p className="rey-premium-modal-text">
+              Se perderá el progreso actual
+            </p>
+
+            <div className="rey-premium-modal-buttons">
+              <button
+                onClick={() => {
+                  setMostrarModalReiniciar(false);
+                  nuevoPartido();
+                  setPantallaActual('inicio');
+                }}
+                className="rey-premium-modal-button rey-premium-modal-button-primary"
+              >
+                REINICIAR
+              </button>
+
+              <button
+                onClick={() => setMostrarModalReiniciar(false)}
                 className="rey-premium-modal-button rey-premium-modal-button-secondary"
               >
                 CANCELAR

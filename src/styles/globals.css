@@ -201,19 +201,26 @@ html, body {
 
 /* Tab bar specific adjustments for iOS - SIMPLIFIED */
 .ios-tab-bar {
-  /* Core layout */
-  min-height: var(--tab-bar-height);
-  padding: 12px 16px;
-  
+  /* Core layout - ultra compacto */
+  min-height: auto;
+  padding: 4px 12px 6px 12px;
+
   /* Visual styling */
   background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
   border-top: 1px solid rgba(212, 165, 116, 0.3);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  
+
   /* iPhone specific fixes */
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
+}
+
+/* Mobile: tab bar ultra compacto */
+@media (max-width: 640px) {
+  .ios-tab-bar {
+    padding: 1px 4px 2px 4px;
+  }
 }
 
 /* Prevent any potential viewport issues */
@@ -7192,12 +7199,12 @@ html {
   border: 1px solid #D4A574;
   color: #0a0a0a;
   font-weight: bold;
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 0;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   transition: all 0.2s ease;
-  width: 48px;        /* Tamaño móvil óptimo según Apple HIG */
-  height: 48px;       /* Tamaño móvil óptimo según Apple HIG */
+  width: 36px;        /* Más compacto para mobile */
+  height: 36px;       /* Más compacto para mobile */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8161,12 +8168,12 @@ html {
   background: rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(212, 165, 116, 0.1);
-  border-radius: 12px;
-  padding: 6px 8px;
-  margin-top: 4px;
+  border-radius: 8px;
+  padding: 4px 6px;
+  margin-top: 2px;
   /* Asegurar que no se corte */
   flex-shrink: 0;
-  min-height: 60px;
+  min-height: auto;
 }
 
 .rey-premium-action-button-compact {
@@ -8174,9 +8181,9 @@ html {
   border: 1px solid #D4A574;
   color: #0a0a0a;
   font-weight: 600;
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 0.8rem;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.7rem;
   transition: all 0.2s ease;
   white-space: nowrap;
   font-family: "Oswald", sans-serif;
@@ -8204,18 +8211,32 @@ html {
     padding: 3px 6px;
     max-width: 100px;
   }
-  
+
   .rey-premium-score-display-compact {
     font-size: 1.5rem;
   }
-  
+
   .rey-premium-action-button-compact {
-    font-size: 0.75rem;
-    padding: 4px 8px;
+    font-size: 0.65rem;
+    padding: 3px 6px;
   }
-  
+
   .rey-premium-controls-area-compact {
-    padding: 4px 6px;
-    margin-top: 2px;
+    padding: 3px 4px;
+    margin-top: 1px;
+  }
+}
+
+/* Mobile width adjustments */
+@media (max-width: 640px) {
+  .rey-premium-action-button-compact {
+    font-size: 0.65rem;
+    padding: 3px 6px;
+  }
+
+  .rey-premium-controls-area-compact {
+    padding: 3px 4px;
+    margin-top: 1px;
+    border-radius: 6px;
   }
 }

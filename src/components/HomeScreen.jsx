@@ -181,7 +181,7 @@ const HomeScreen = ({ onNavigateToPlay, onShowAuth }) => {
               ¿Querés ser el Rey?
             </h3>
             <p className="text-[#F5DEB3] text-sm mb-4 leading-relaxed">
-              Creá tu cuenta para acceder a estadísticas detalladas, 
+              Creá tu cuenta para acceder a estadísticas detalladas,
               rankings locales y competir por el trono del truco.
             </p>
             <button
@@ -192,6 +192,35 @@ const HomeScreen = ({ onNavigateToPlay, onShowAuth }) => {
             </button>
           </div>
         )}
+
+        {/* Footer con links legales */}
+        <div className="pt-4 pb-2 text-center">
+          <p className="text-[#F5DEB3] text-[10px] opacity-40">
+            <a
+              href="/privacy"
+              className="hover:opacity-70 transition-opacity"
+              onClick={(e) => {
+                e.preventDefault();
+                window.history.pushState({}, '', '/privacy');
+                window.location.reload();
+              }}
+            >
+              Privacidad
+            </a>
+            {' · '}
+            <a
+              href="/terms"
+              className="hover:opacity-70 transition-opacity"
+              onClick={(e) => {
+                e.preventDefault();
+                window.history.pushState({}, '', '/terms');
+                window.location.reload();
+              }}
+            >
+              Términos
+            </a>
+          </p>
+        </div>
       </div>
     </ScreenContainer>
   );

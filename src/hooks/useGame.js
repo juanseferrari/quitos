@@ -127,7 +127,11 @@ export const useGame = () => {
   const setMostrarModalVictoria = useCallback((show) => {
     dispatch(actions.toggleModalVictoria(show));
   }, [dispatch, actions]);
-  
+
+  const setMostrarModalReiniciar = useCallback((show) => {
+    dispatch(actions.toggleModalReiniciar(show));
+  }, [dispatch, actions]);
+
   // Funciones calculadas
   const calcularPuntosFalta = useCallback((equipoGanador) => {
     const player = equipoGanador === 'nos' ? PLAYERS.NOS : PLAYERS.ELLOS;
@@ -228,6 +232,7 @@ export const useGame = () => {
     pantallaActual: ui.pantallaActual,
     mostrarModalFalta: ui.mostrarModalFalta,
     mostrarModalVictoria: ui.mostrarModalVictoria,
+    mostrarModalReiniciar: ui.mostrarModalReiniciar,
     loading: ui.loading,
     error: ui.error,
     
@@ -251,7 +256,8 @@ export const useGame = () => {
     setPantallaActual,
     setMostrarModalFalta,
     setMostrarModalVictoria,
-    
+    setMostrarModalReiniciar,
+
     // Funciones calculadas
     calcularPuntosFalta,
     ganaPartido,

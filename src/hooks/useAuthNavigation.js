@@ -40,13 +40,8 @@ export const useAuthNavigation = () => {
   };
   
   const getOnboardingStep = () => {
-    const hasSeenOnboarding = localStorage.getItem('trucoapp_onboarding_seen');
-    
-    if (!hasSeenOnboarding) {
-      return 'onboarding'; // Mostrar slides de onboarding primero
-    }
-    
-    // Si ya vio onboarding, seguir lógica normal
+    // Saltar onboarding - ir directo al home
+    // El onboarding ya no se muestra, vamos directo a la app
     return getInitialRoute();
   };
   

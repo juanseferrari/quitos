@@ -57,7 +57,7 @@ export const AuthSelectionScreen = ({ onContinueAnonymous }) => {
   const displayError = localError || error;
 
   return (
-    <div className="rey-premium-layout min-h-screen flex items-center justify-center">
+    <div className="rey-premium-layout min-h-screen flex items-center justify-center px-6">
       <div className="rey-premium-container max-w-md mx-auto p-6">
         <div className="auth-selection-screen text-center">
           {/* Header */}

@@ -69,17 +69,17 @@ const MainApp = ({ onShowAuth }) => {
               <button
                 key={tab.id}
                 onClick={() => handleTabClick(tab.id, tab.authRequired)}
-                className={`flex flex-col items-center py-2 px-3 rounded-lg transition-all duration-200 ${
-                  isActive 
-                    ? 'bg-[#D4A574] bg-opacity-20 text-[#D4A574]' 
-                    : needsAuth 
-                      ? 'text-[#F5DEB3] opacity-50' 
+                className={`flex flex-col items-center py-0.5 px-2 rounded transition-all duration-200 ${
+                  isActive
+                    ? 'bg-[#D4A574] bg-opacity-20 text-[#D4A574]'
+                    : needsAuth
+                      ? 'text-[#F5DEB3] opacity-50'
                       : 'text-[#F5DEB3] opacity-70 hover:opacity-100 hover:bg-[#F5DEB3] hover:bg-opacity-10'
                 }`}
               >
-                <span className="text-lg mb-1">{tab.icon}</span>
-                <span className="text-xs font-medium">{tab.label}</span>
-                {needsAuth && <span className="text-xs opacity-60">🔒</span>}
+                <span className="text-sm">{tab.icon}</span>
+                <span className="text-[9px] font-medium leading-tight">{tab.label}</span>
+                {needsAuth && <span className="text-[7px] opacity-60 leading-none">🔒</span>}
               </button>
             );
           })}

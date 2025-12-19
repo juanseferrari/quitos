@@ -203,35 +203,57 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  // Listener para authService real (Supabase OAuth)
+  // Listener para authService real (Supabase OAuth) - ÚNICO manejador de auth para Supabase
   useEffect(() => {
     if (!authService.isMockMode() && authService.supabase) {
       console.log('🔄 AuthContext: Setting up Supabase auth listener');
 
+      // Marcar que estamos cargando
+      dispatch({ type: 'AUTH_LOADING' });
+
       let isProcessing = false; // Prevent double processing
+      let initialCheckDone = false; // Track if we've done the initial check
 
       const { data: { subscription } } = authService.supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('🔐 AuthContext detected auth change:', event, session?.user?.email);
+        console.log('🔐 AuthContext detected auth change:', event, session?.user?.email || 'no session');
 
-        // Handle sign in, token refresh, and initial session events
+        // Handle INITIAL_SESSION with no user (not logged in)
+        if (event === 'INITIAL_SESSION' && !session?.user) {
+          console.log('ℹ️ No existing session, setting anonymous');
+          initialCheckDone = true;
+          dispatch({ type: 'SET_ANONYMOUS' });
+          return;
+        }
+
+        // Handle sign in, token refresh, and initial session events WITH a user
         if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session?.user && !isProcessing) {
           isProcessing = true;
-          console.log(`✅ Processing ${event} event`);
+          initialCheckDone = true;
+          console.log(`✅ Processing ${event} event for:`, session.user.email);
 
           try {
-            // Cargar perfil del usuario
+            // Cargar perfil del usuario (con timeout para evitar bloqueos)
             let userProfile = null;
             try {
-              userProfile = await authService.getUserProfile(session.user.id);
+              const profilePromise = authService.getUserProfile(session.user.id);
+              const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Profile load timeout')), 5000)
+              );
+              userProfile = await Promise.race([profilePromise, timeoutPromise]);
+              console.log('📋 User profile loaded:', userProfile?.email || 'no profile yet');
             } catch (profileError) {
-              console.warn('⚠️ Could not load user profile:', profileError);
+              console.warn('⚠️ Could not load user profile:', profileError.message);
             }
+
+            // Obtener email seguro
+            const userEmail = session.user.email || '';
+            const emailUsername = userEmail.includes('@') ? userEmail.split('@')[0] : 'Usuario';
 
             const payload = {
               user: {
                 id: session.user.id,
-                email: session.user.email,
-                name: userProfile?.name || session.user.user_metadata?.full_name || session.user.email.split('@')[0],
+                email: userEmail,
+                name: userProfile?.name || session.user.user_metadata?.full_name || emailUsername,
                 username: userProfile?.display_name || null,
                 avatar: userProfile?.avatar_url || session.user.user_metadata?.avatar_url || null,
                 provider: session.user.app_metadata?.provider || AUTH_PROVIDERS.GOOGLE,
@@ -244,6 +266,7 @@ export const AuthProvider = ({ children }) => {
               expiresAt: new Date(Date.now() + (session.expires_in || 3600) * 1000).toISOString()
             };
 
+            console.log('📤 Dispatching AUTH_SUCCESS for:', payload.user.email);
             dispatch({
               type: 'AUTH_SUCCESS',
               payload: payload
@@ -260,8 +283,12 @@ export const AuthProvider = ({ children }) => {
               const hasLocalData = () => {
                 const gameState = localStorage.getItem('rey-del-truco-state');
                 if (gameState) {
-                  const data = JSON.parse(gameState);
-                  return data.localData?.partidasJugadas > 0;
+                  try {
+                    const data = JSON.parse(gameState);
+                    return data.localData?.partidasJugadas > 0;
+                  } catch {
+                    return false;
+                  }
                 }
                 return false;
               };
@@ -285,6 +312,8 @@ export const AuthProvider = ({ children }) => {
 
           } catch (error) {
             console.error('🔥 Error in auth state change handler:', error);
+            // En caso de error, setear como anónimo para no bloquear la UI
+            dispatch({ type: 'SET_ANONYMOUS' });
           } finally {
             isProcessing = false;
           }
@@ -295,72 +324,98 @@ export const AuthProvider = ({ children }) => {
         }
       });
 
+      // Verificación inmediata de sesión (por si el listener no dispara INITIAL_SESSION)
+      const checkExistingSession = async () => {
+        // Dar un pequeño delay para que el listener tenga chance de procesar primero
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        if (!initialCheckDone) {
+          console.log('🔍 Checking for existing session directly...');
+          try {
+            const { data: { session }, error } = await authService.supabase.auth.getSession();
+
+            if (error) {
+              console.error('🔥 Error getting session:', error);
+              dispatch({ type: 'SET_ANONYMOUS' });
+              initialCheckDone = true;
+              return;
+            }
+
+            if (session?.user && !isProcessing) {
+              console.log('✅ Found existing session for:', session.user.email);
+              isProcessing = true;
+              initialCheckDone = true;
+
+              // Obtener email seguro
+              const userEmail = session.user.email || '';
+              const emailUsername = userEmail.includes('@') ? userEmail.split('@')[0] : 'Usuario';
+
+              const payload = {
+                user: {
+                  id: session.user.id,
+                  email: userEmail,
+                  name: session.user.user_metadata?.full_name || emailUsername,
+                  username: null,
+                  avatar: session.user.user_metadata?.avatar_url || null,
+                  provider: session.user.app_metadata?.provider || AUTH_PROVIDERS.GOOGLE,
+                  createdAt: session.user.created_at,
+                  lastLoginAt: new Date().toISOString()
+                },
+                session: session,
+                token: session.access_token,
+                refreshToken: session.refresh_token,
+                expiresAt: new Date(Date.now() + (session.expires_in || 3600) * 1000).toISOString()
+              };
+
+              dispatch({ type: 'AUTH_SUCCESS', payload });
+              localStorage.setItem('trucoapp_had_auth', 'true');
+              console.log('✅ Session restored from direct check');
+              isProcessing = false;
+            } else if (!session?.user) {
+              console.log('ℹ️ No session found in direct check');
+              dispatch({ type: 'SET_ANONYMOUS' });
+              initialCheckDone = true;
+            }
+          } catch (error) {
+            console.error('🔥 Session check error:', error);
+            dispatch({ type: 'SET_ANONYMOUS' });
+            initialCheckDone = true;
+          }
+        }
+      };
+
+      checkExistingSession();
+
+      // Fallback adicional: si después de 3 segundos aún no se procesó nada
+      const fallbackTimeout = setTimeout(() => {
+        if (!initialCheckDone) {
+          console.log('⚠️ Fallback timeout: setting anonymous');
+          dispatch({ type: 'SET_ANONYMOUS' });
+          initialCheckDone = true;
+        }
+      }, 3000);
+
       return () => {
         console.log('🧹 Cleaning up Supabase auth listener');
+        clearTimeout(fallbackTimeout);
         subscription?.unsubscribe();
       };
     }
   }, []); // Empty dependency array - listener should only be set up once
   
   const initializeAuth = async () => {
+    // Si Supabase está configurado, el listener de arriba maneja todo
+    // Esta función solo maneja el mock service
+    if (!authService.isMockMode()) {
+      console.log('ℹ️ initializeAuth: Supabase mode - listener handles auth');
+      return; // El listener de Supabase maneja la autenticación
+    }
+
     try {
+      console.log('🔄 initializeAuth: Mock mode - checking token');
       dispatch({ type: 'AUTH_LOADING' });
 
-      // Primero verificar si hay sesión de Supabase existente
-      if (!authService.isMockMode() && authService.supabase) {
-        console.log('🔄 Checking for existing Supabase session...');
-
-        try {
-          const { data: { session }, error } = await authService.supabase.auth.getSession();
-
-          if (error) {
-            console.error('🔥 Error getting Supabase session:', error);
-          }
-
-          if (session?.user) {
-            console.log('✅ Found existing Supabase session for:', session.user.email);
-
-            // Cargar perfil del usuario
-            let userProfile = null;
-            try {
-              userProfile = await authService.getUserProfile(session.user.id);
-            } catch (profileError) {
-              console.warn('⚠️ Could not load user profile:', profileError);
-            }
-
-            const payload = {
-              user: {
-                id: session.user.id,
-                email: session.user.email,
-                name: userProfile?.name || session.user.user_metadata?.full_name || session.user.email.split('@')[0],
-                username: userProfile?.display_name || null,
-                avatar: userProfile?.avatar_url || session.user.user_metadata?.avatar_url || null,
-                provider: session.user.app_metadata?.provider || AUTH_PROVIDERS.GOOGLE,
-                createdAt: userProfile?.created_at || session.user.created_at,
-                lastLoginAt: new Date().toISOString()
-              },
-              session: session,
-              token: session.access_token,
-              refreshToken: session.refresh_token,
-              expiresAt: new Date(Date.now() + (session.expires_in || 3600) * 1000).toISOString()
-            };
-
-            dispatch({
-              type: 'AUTH_SUCCESS',
-              payload: payload
-            });
-
-            console.log('✅ Session restored successfully');
-            return;
-          } else {
-            console.log('ℹ️ No existing Supabase session found');
-          }
-        } catch (supabaseError) {
-          console.error('🔥 Error checking Supabase session:', supabaseError);
-        }
-      }
-
-      // Fallback: Verificar token existente del mock service
+      // Verificar token existente del mock service
       const token = localStorage.getItem('trucoapp_token');
       if (token) {
         try {

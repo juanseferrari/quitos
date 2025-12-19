@@ -317,7 +317,7 @@ export const gameReducer = (state, action) => {
     
     case GAME_ACTIONS.TOGGLE_MODAL_VICTORIA: {
       const { show } = action.payload || {};
-      
+
       return {
         ...state,
         ui: {
@@ -326,7 +326,19 @@ export const gameReducer = (state, action) => {
         }
       };
     }
-    
+
+    case GAME_ACTIONS.TOGGLE_MODAL_REINICIAR: {
+      const { show } = action.payload || {};
+
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          mostrarModalReiniciar: show !== undefined ? show : !state.ui.mostrarModalReiniciar
+        }
+      };
+    }
+
     case GAME_ACTIONS.MARK_FOR_SYNC: {
       return {
         ...state,
@@ -467,7 +479,12 @@ export const gameActions = {
     type: GAME_ACTIONS.TOGGLE_MODAL_VICTORIA,
     payload: { show, timestamp: Date.now() }
   }),
-  
+
+  toggleModalReiniciar: (show) => ({
+    type: GAME_ACTIONS.TOGGLE_MODAL_REINICIAR,
+    payload: { show, timestamp: Date.now() }
+  }),
+
   markForSync: () => ({
     type: GAME_ACTIONS.MARK_FOR_SYNC,
     payload: { timestamp: Date.now() }

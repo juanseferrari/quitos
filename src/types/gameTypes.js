@@ -21,6 +21,7 @@ export const GAME_ACTIONS = {
   SET_SCREEN: 'SET_SCREEN',
   TOGGLE_MODAL_FALTA: 'TOGGLE_MODAL_FALTA',
   TOGGLE_MODAL_VICTORIA: 'TOGGLE_MODAL_VICTORIA',
+  TOGGLE_MODAL_REINICIAR: 'TOGGLE_MODAL_REINICIAR',
   
   // Metadata
   MARK_FOR_SYNC: 'MARK_FOR_SYNC',
@@ -74,6 +75,7 @@ export const INITIAL_GAME_STATE = {
     pantallaActual: SCREENS.INICIO,
     mostrarModalFalta: false,
     mostrarModalVictoria: false,
+    mostrarModalReiniciar: false,
     loading: false,
     error: null
   },

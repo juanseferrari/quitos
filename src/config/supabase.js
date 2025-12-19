@@ -15,27 +15,74 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('⚠️ Supabase configuration missing. Using mock services.');
 }
 
-// Create Supabase client with iOS-specific configuration
-export const supabase = supabaseUrl && supabaseAnonKey 
+// Storage key para la sesión de Supabase
+const STORAGE_KEY = 'rey-del-truco-auth';
+
+// Create Supabase client with session persistence
+export const supabase = supabaseUrl && supabaseAnonKey
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: window.Capacitor ? false : true, // Disable URL detection in native apps
+        detectSessionInUrl: true, // Detectar tokens en URL (OAuth callback)
         flowType: 'pkce',
-        // iOS compatible storage
+        storageKey: STORAGE_KEY, // Key específica para evitar conflictos
         storage: typeof window !== 'undefined' ? window.localStorage : undefined
       },
-      // iOS network configuration
       global: {
         headers: {
-          'X-Client-Info': window.Capacitor 
+          'X-Client-Info': window.Capacitor
             ? `rey-del-truco-ios/${window.Capacitor.getPlatform()}`
             : 'rey-del-truco-web'
         }
       }
     })
   : null;
+
+// Debug y migración de sesión: verificar en múltiples keys
+if (typeof window !== 'undefined') {
+  // Keys donde Supabase podría haber guardado la sesión
+  const possibleKeys = [
+    STORAGE_KEY,
+    'sb-pmymvwpgjacrkbimccao-auth-token', // Key default de Supabase (sb-{project-ref}-auth-token)
+    'supabase.auth.token'
+  ];
+
+  let foundSession = null;
+  let foundKey = null;
+
+  for (const key of possibleKeys) {
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      console.log(`🔍 Found session in localStorage key: ${key}`);
+      foundSession = saved;
+      foundKey = key;
+      break;
+    }
+  }
+
+  if (foundSession) {
+    try {
+      const parsed = JSON.parse(foundSession);
+      console.log('🔍 Session user:', parsed?.user?.email || parsed?.currentSession?.user?.email || 'parsing...');
+
+      // Si la sesión estaba en otra key, migrarla a nuestra key
+      if (foundKey !== STORAGE_KEY) {
+        console.log(`🔄 Migrating session from ${foundKey} to ${STORAGE_KEY}`);
+        localStorage.setItem(STORAGE_KEY, foundSession);
+      }
+    } catch (e) {
+      console.log('🔍 Could not parse saved session:', e.message);
+    }
+  } else {
+    console.log('🔍 No Supabase session found in localStorage');
+    // Mostrar todas las keys que empiecen con 'sb-' para debug
+    const sbKeys = Object.keys(localStorage).filter(k => k.startsWith('sb-') || k.includes('supabase'));
+    if (sbKeys.length > 0) {
+      console.log('🔍 Found Supabase-related keys:', sbKeys);
+    }
+  }
+}
 
 // Configuration constants
 export const SUPABASE_CONFIG = {
