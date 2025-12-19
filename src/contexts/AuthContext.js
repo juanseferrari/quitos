@@ -207,53 +207,28 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (!authService.isMockMode() && authService.supabase) {
       console.log('🔄 AuthContext: Setting up Supabase auth listener');
-      console.log('🔄 Current URL:', window.location.href);
 
       // Marcar que estamos cargando
       dispatch({ type: 'AUTH_LOADING' });
 
-      let isProcessing = false; // Prevent double processing
-      let initialCheckDone = false; // Track if we've done the initial check
+      let isProcessing = false;
 
-      // Check for OAuth tokens in URL immediately (PWA fix)
-      const urlHasTokens = window.location.hash.includes('access_token') ||
-                          window.location.search.includes('access_token');
-      if (urlHasTokens) {
-        console.log('🔐 AuthContext: Found tokens in URL, waiting for setSession...');
-      }
-
+      // Setup auth state change listener
       const { data: { subscription } } = authService.supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('🔐 AuthContext detected auth change:', event, session?.user?.email || 'no session');
 
-        // Handle INITIAL_SESSION with no user (not logged in)
-        if (event === 'INITIAL_SESSION' && !session?.user) {
-          console.log('ℹ️ No existing session, setting anonymous');
-          initialCheckDone = true;
-          dispatch({ type: 'SET_ANONYMOUS' });
+        // Prevent double processing
+        if (isProcessing) {
+          console.log('⏳ Already processing, skipping...');
           return;
         }
 
-        // Handle sign in, token refresh, and initial session events WITH a user
-        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session?.user && !isProcessing) {
+        // SIGNED_IN or TOKEN_REFRESHED with a valid session
+        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session?.user) {
           isProcessing = true;
-          initialCheckDone = true;
-          console.log(`✅ Processing ${event} event for:`, session.user.email);
+          console.log(`✅ Processing ${event} for:`, session.user.email);
 
           try {
-            // Cargar perfil del usuario (con timeout para evitar bloqueos)
-            let userProfile = null;
-            try {
-              const profilePromise = authService.getUserProfile(session.user.id);
-              const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Profile load timeout')), 5000)
-              );
-              userProfile = await Promise.race([profilePromise, timeoutPromise]);
-              console.log('📋 User profile loaded:', userProfile?.email || 'no profile yet');
-            } catch (profileError) {
-              console.warn('⚠️ Could not load user profile:', profileError.message);
-            }
-
-            // Obtener email seguro
             const userEmail = session.user.email || '';
             const emailUsername = userEmail.includes('@') ? userEmail.split('@')[0] : 'Usuario';
 
@@ -261,11 +236,11 @@ export const AuthProvider = ({ children }) => {
               user: {
                 id: session.user.id,
                 email: userEmail,
-                name: userProfile?.name || session.user.user_metadata?.full_name || emailUsername,
-                username: userProfile?.display_name || null,
-                avatar: userProfile?.avatar_url || session.user.user_metadata?.avatar_url || null,
+                name: session.user.user_metadata?.full_name || emailUsername,
+                username: null,
+                avatar: session.user.user_metadata?.avatar_url || null,
                 provider: session.user.app_metadata?.provider || AUTH_PROVIDERS.GOOGLE,
-                createdAt: userProfile?.created_at || session.user.created_at,
+                createdAt: session.user.created_at,
                 lastLoginAt: new Date().toISOString()
               },
               session: session,
@@ -275,151 +250,70 @@ export const AuthProvider = ({ children }) => {
             };
 
             console.log('📤 Dispatching AUTH_SUCCESS for:', payload.user.email);
-            dispatch({
-              type: 'AUTH_SUCCESS',
-              payload: payload
-            });
-
-            // Mark that user has been authenticated for future OAuth attempts
+            dispatch({ type: 'AUTH_SUCCESS', payload });
             localStorage.setItem('trucoapp_had_auth', 'true');
 
-            console.log('✅ AUTH_SUCCESS dispatch completed');
-
-            // Only run migration on fresh sign in, not on token refresh or initial session
+            // Background profile creation for new sign ins
             if (event === 'SIGNED_IN') {
-              // Check for local data migration after successful auth
-              const hasLocalData = () => {
-                const gameState = localStorage.getItem('rey-del-truco-state');
-                if (gameState) {
-                  try {
-                    const data = JSON.parse(gameState);
-                    return data.localData?.partidasJugadas > 0;
-                  } catch {
-                    return false;
-                  }
-                }
-                return false;
-              };
-
-              if (hasLocalData()) {
-                console.log('🔄 Starting local data migration...');
-                const { startDataMigration } = await import('../services/dataMigration');
-                await startDataMigration(session.user.id);
-              }
-
-              // Create profile in background (non-blocking)
               setTimeout(async () => {
                 try {
                   await authService.ensureUserProfile(session.user);
-                  console.log('✅ Background profile creation completed');
-                } catch (profileError) {
-                  console.error('⚠️ Background profile creation failed:', profileError);
+                } catch (e) {
+                  console.warn('⚠️ Profile creation failed:', e.message);
                 }
               }, 100);
             }
 
           } catch (error) {
-            console.error('🔥 Error in auth state change handler:', error);
-            // En caso de error, setear como anónimo para no bloquear la UI
+            console.error('🔥 Error processing auth:', error);
             dispatch({ type: 'SET_ANONYMOUS' });
           } finally {
             isProcessing = false;
           }
-        } else if (event === 'SIGNED_OUT') {
-          console.log('🚪 User signed out via Supabase');
-          isProcessing = false;
+        }
+        // INITIAL_SESSION without a user = not logged in
+        else if (event === 'INITIAL_SESSION' && !session?.user) {
+          console.log('ℹ️ No existing session');
+          dispatch({ type: 'SET_ANONYMOUS' });
+        }
+        // SIGNED_OUT
+        else if (event === 'SIGNED_OUT') {
+          console.log('🚪 User signed out');
           dispatch({ type: 'LOGOUT' });
         }
       });
 
-      // Verificación inmediata de sesión (por si el listener no dispara INITIAL_SESSION)
-      const checkExistingSession = async () => {
-        // Si hay tokens en la URL, dar más tiempo para que se procesen
-        const hasUrlTokens = window.location.hash.includes('access_token') ||
-                            window.location.search.includes('access_token');
-        const waitTime = hasUrlTokens ? 2000 : 500;
+      // Check for existing session on mount
+      const checkSession = async () => {
+        // Small delay to let the listener set up
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-        console.log(`🔍 Waiting ${waitTime}ms before checking session (hasUrlTokens: ${hasUrlTokens})`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
+        try {
+          const { data: { session } } = await authService.supabase.auth.getSession();
 
-        if (!initialCheckDone) {
-          console.log('🔍 Checking for existing session directly...');
-          try {
-            const { data: { session }, error } = await authService.supabase.auth.getSession();
-
-            if (error) {
-              console.error('🔥 Error getting session:', error);
-              dispatch({ type: 'SET_ANONYMOUS' });
-              initialCheckDone = true;
-              return;
-            }
-
-            if (session?.user && !isProcessing) {
-              console.log('✅ Found existing session for:', session.user.email);
-              isProcessing = true;
-              initialCheckDone = true;
-
-              // Obtener email seguro
-              const userEmail = session.user.email || '';
-              const emailUsername = userEmail.includes('@') ? userEmail.split('@')[0] : 'Usuario';
-
-              const payload = {
-                user: {
-                  id: session.user.id,
-                  email: userEmail,
-                  name: session.user.user_metadata?.full_name || emailUsername,
-                  username: null,
-                  avatar: session.user.user_metadata?.avatar_url || null,
-                  provider: session.user.app_metadata?.provider || AUTH_PROVIDERS.GOOGLE,
-                  createdAt: session.user.created_at,
-                  lastLoginAt: new Date().toISOString()
-                },
-                session: session,
-                token: session.access_token,
-                refreshToken: session.refresh_token,
-                expiresAt: new Date(Date.now() + (session.expires_in || 3600) * 1000).toISOString()
-              };
-
-              dispatch({ type: 'AUTH_SUCCESS', payload });
-              localStorage.setItem('trucoapp_had_auth', 'true');
-              console.log('✅ Session restored from direct check');
-              isProcessing = false;
-            } else if (!session?.user) {
-              console.log('ℹ️ No session found in direct check');
-              dispatch({ type: 'SET_ANONYMOUS' });
-              initialCheckDone = true;
-            }
-          } catch (error) {
-            console.error('🔥 Session check error:', error);
+          if (session?.user) {
+            console.log('✅ Found existing session on mount:', session.user.email);
+            // The onAuthStateChange should have already handled this via INITIAL_SESSION
+            // But if not, we'll dispatch here as fallback
+          } else {
+            console.log('ℹ️ No session on mount');
+            // Listener should handle this, but set anonymous as fallback
             dispatch({ type: 'SET_ANONYMOUS' });
-            initialCheckDone = true;
           }
+        } catch (error) {
+          console.error('🔥 Session check error:', error);
+          dispatch({ type: 'SET_ANONYMOUS' });
         }
       };
 
-      checkExistingSession();
-
-      // Fallback adicional: si después de X segundos aún no se procesó nada
-      // Dar más tiempo si hay tokens en la URL (OAuth callback)
-      const hasUrlTokens = window.location.hash.includes('access_token') ||
-                          window.location.search.includes('access_token');
-      const fallbackTimeMs = hasUrlTokens ? 8000 : 3000;
-
-      const fallbackTimeout = setTimeout(() => {
-        if (!initialCheckDone) {
-          console.log(`⚠️ Fallback timeout (${fallbackTimeMs}ms): setting anonymous`);
-          dispatch({ type: 'SET_ANONYMOUS' });
-          initialCheckDone = true;
-        }
-      }, fallbackTimeMs);
+      checkSession();
 
       return () => {
-        console.log('🧹 Cleaning up Supabase auth listener');
-        clearTimeout(fallbackTimeout);
+        console.log('🧹 Cleaning up auth listener');
         subscription?.unsubscribe();
       };
     }
-  }, []); // Empty dependency array - listener should only be set up once
+  }, []);
   
   const initializeAuth = async () => {
     // Si Supabase está configurado, el listener de arriba maneja todo
