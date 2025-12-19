@@ -133,25 +133,69 @@ class AuthService {
     return { success: true, data };
   }
 
-  // Sign in with Apple (for future implementation)
-  async signInWithApple() {
+  // Sign in with Email/Password
+  async signInWithEmail(email, password) {
     if (!this.isConfigured) {
       throw new Error('Supabase not configured');
     }
 
     try {
-      const { data, error } = await this.supabase.auth.signInWithOAuth({
-        provider: 'apple',
+      console.log('🔐 Starting email sign in for:', email);
+
+      const { data, error } = await this.supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
+      this.currentUser = data.user;
+      await this.ensureUserProfile(data.user);
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('🔥 Email sign in error:', error);
+      throw error;
+    }
+  }
+
+  // Sign up with Email/Password
+  async signUpWithEmail(email, password, name = null) {
+    if (!this.isConfigured) {
+      throw new Error('Supabase not configured');
+    }
+
+    try {
+      console.log('🔐 Starting email sign up for:', email);
+
+      const { data, error } = await this.supabase.auth.signUp({
+        email,
+        password,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          data: {
+            full_name: name || email.split('@')[0]
+          }
         }
       });
 
       if (error) throw error;
-      
+
+      // Check if email confirmation is required
+      if (data.user && !data.session) {
+        return {
+          success: true,
+          data,
+          needsEmailConfirmation: true,
+          message: 'Revisá tu email para confirmar tu cuenta'
+        };
+      }
+
+      this.currentUser = data.user;
+      await this.ensureUserProfile(data.user);
+
       return { success: true, data };
     } catch (error) {
-      console.error('🔥 Apple sign in error:', error);
+      console.error('🔥 Email sign up error:', error);
       throw error;
     }
   }

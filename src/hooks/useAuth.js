@@ -79,26 +79,78 @@ export const useAuth = () => {
   const signInWithEmail = async (email, password) => {
     try {
       dispatch({ type: 'AUTH_LOADING' });
-      
-      const response = await api.signInWithEmail({ email, password });
-      
-      // Guardar tokens
-      localStorage.setItem('trucoapp_token', response.token);
-      localStorage.setItem('trucoapp_refresh_token', response.refreshToken);
-      
-      dispatch({
-        type: 'AUTH_SUCCESS',
-        payload: response
-      });
-      
-      // Iniciar migración de datos locales si es necesario
-      if (hasLocalData()) {
-        await startDataMigration(response.user.id);
+
+      if (!authService.isMockMode()) {
+        console.log('🔐 Starting email sign in with Supabase...');
+
+        const result = await authService.signInWithEmail(email, password);
+
+        if (result.success) {
+          console.log('✅ Email sign in successful');
+          // AuthContext listener will handle the session
+        }
+
+        return result;
+      } else {
+        // Fallback to mock mode
+        const response = await api.signInWithEmail({ email, password });
+
+        localStorage.setItem('trucoapp_token', response.token);
+        localStorage.setItem('trucoapp_refresh_token', response.refreshToken);
+
+        dispatch({
+          type: 'AUTH_SUCCESS',
+          payload: response
+        });
+
+        if (hasLocalData()) {
+          await startDataMigration(response.user.id);
+        }
       }
-      
+
     } catch (error) {
       console.error('Email sign in error:', error);
       dispatch({ type: 'AUTH_ERROR', payload: { error: error.message } });
+      throw error;
+    }
+  };
+
+  const signUpWithEmail = async (email, password, name = null) => {
+    try {
+      dispatch({ type: 'AUTH_LOADING' });
+
+      if (!authService.isMockMode()) {
+        console.log('🔐 Starting email sign up with Supabase...');
+
+        const result = await authService.signUpWithEmail(email, password, name);
+
+        if (result.needsEmailConfirmation) {
+          dispatch({ type: 'AUTH_ERROR', payload: { error: result.message } });
+          return result;
+        }
+
+        if (result.success) {
+          console.log('✅ Email sign up successful');
+        }
+
+        return result;
+      } else {
+        // Fallback to mock mode
+        const response = await api.signUp({ email, password, name });
+
+        localStorage.setItem('trucoapp_token', response.token);
+        localStorage.setItem('trucoapp_refresh_token', response.refreshToken);
+
+        dispatch({
+          type: 'AUTH_SUCCESS',
+          payload: response
+        });
+      }
+
+    } catch (error) {
+      console.error('Email sign up error:', error);
+      dispatch({ type: 'AUTH_ERROR', payload: { error: error.message } });
+      throw error;
     }
   };
   
@@ -198,6 +250,7 @@ export const useAuth = () => {
     // Acciones
     signInWithGoogle,
     signInWithEmail,
+    signUpWithEmail,
     signUp,
     signOut,
     continueAsAnonymous,
