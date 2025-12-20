@@ -4,10 +4,10 @@ import { useIOSViewport } from '../hooks/useIOSViewport';
 
 const IOSContainer = ({ children, className = '' }) => {
   const { isIOS } = useIOSViewport();
-  
+
   return (
     <div className={`
-      h-screen-dynamic flex flex-col
+      h-screen-dynamic flex flex-col overflow-hidden
       ${isIOS ? 'ios-safe-container-no-bottom' : 'flex flex-col h-screen'}
       ${className}
     `}>
@@ -19,7 +19,7 @@ const IOSContainer = ({ children, className = '' }) => {
 export const IOSContentArea = ({ children, className = '', noScroll = false }) => {
   return (
     <div className={`
-      flex-1 ${noScroll ? 'overflow-hidden' : 'overflow-y-auto ios-smooth-scroll'}
+      flex-1 min-h-0 ${noScroll ? 'overflow-hidden' : 'overflow-y-auto ios-smooth-scroll overflow-x-hidden'}
       ${className}
     `}>
       {children}
@@ -30,7 +30,7 @@ export const IOSContentArea = ({ children, className = '', noScroll = false }) =
 export const IOSTabBar = ({ children, className = '' }) => {
   return (
     <div className={`
-      flex-shrink-0 ios-tab-bar safe-area-bottom
+      flex-shrink-0 ios-tab-bar
       ${className}
     `}>
       {children}

@@ -24,7 +24,7 @@ export const supabase = supabaseUrl && supabaseAnonKey
       auth: {
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: false, // DESHABILITADO: Manejaremos manualmente en AuthCallbackPage
+        detectSessionInUrl: true, // Supabase auto-procesa tokens en URL
         flowType: 'pkce',
         storageKey: STORAGE_KEY, // Key específica para evitar conflictos
         storage: typeof window !== 'undefined' ? window.localStorage : undefined

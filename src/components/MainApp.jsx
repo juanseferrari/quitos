@@ -60,16 +60,16 @@ const MainApp = ({ onShowAuth }) => {
       
       {/* Tab Navigator */}
       <IOSTabBar>
-        <div className="flex justify-around items-center max-w-md mx-auto">
+        <div className="flex justify-around items-center max-w-md mx-auto h-full">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const needsAuth = tab.authRequired && !isAuthenticated;
-            
+
             return (
               <button
                 key={tab.id}
                 onClick={() => handleTabClick(tab.id, tab.authRequired)}
-                className={`flex flex-col items-center py-0.5 px-2 rounded transition-all duration-200 ${
+                className={`flex flex-col items-center justify-center py-2 px-4 rounded-lg transition-all duration-200 ${
                   isActive
                     ? 'bg-[#D4A574] bg-opacity-20 text-[#D4A574]'
                     : needsAuth
@@ -77,9 +77,9 @@ const MainApp = ({ onShowAuth }) => {
                       : 'text-[#F5DEB3] opacity-70 hover:opacity-100 hover:bg-[#F5DEB3] hover:bg-opacity-10'
                 }`}
               >
-                <span className="text-sm">{tab.icon}</span>
-                <span className="text-[9px] font-medium leading-tight">{tab.label}</span>
-                {needsAuth && <span className="text-[7px] opacity-60 leading-none">🔒</span>}
+                <span className="text-xl">{tab.icon}</span>
+                <span className="text-[10px] font-medium leading-tight mt-1">{tab.label}</span>
+                {needsAuth && <span className="text-[8px] opacity-60 leading-none">🔒</span>}
               </button>
             );
           })}

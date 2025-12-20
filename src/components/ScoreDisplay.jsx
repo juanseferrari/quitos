@@ -126,22 +126,6 @@ const ScoreDisplay = ({ puntos, puntosTotales = 30 }) => {
         <div className="flex flex-col items-center gap-1 justify-start" style={{ height: '12.30rem' }}>
           {renderSeccion(cuadraditosMalasCompletos, puntosSueltosMalas, 3)}
         </div>
-        
-        {/* Indicador "AL VERDE" - VISIBLE Y PROPORCIONAL */}
-        <div className="h-6 sm:h-7 md:h-8 flex items-center justify-center mt-0.5 min-h-[20px]">
-          {puntos === puntosTotales - 1 && (
-            <span className="text-sm sm:text-base md:text-lg animate-pulse transform rotate-1 drop-shadow-lg high-dpi-text" 
-                  style={{ 
-                    fontFamily: '"Tilt Warp", sans-serif', 
-                    color: '#F5DEB3',
-                    fontWeight: 'bold',
-                    textShadow: '0 0 10px rgba(245, 222, 179, 0.5)',
-                    fontSize: 'clamp(12px, 3vw, 16px)'
-                  }}>
-              ¡AL VERDE!
-            </span>
-          )}
-        </div>
       </div>
     );
   };

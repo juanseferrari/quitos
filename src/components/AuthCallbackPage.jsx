@@ -13,157 +13,76 @@ const AuthCallbackPage = () => {
     if (processedRef.current) return;
     processedRef.current = true;
 
-    const processOAuthCallback = async () => {
+    const handleOAuthCallback = async () => {
       const currentUrl = window.location.href;
-      const hash = window.location.hash;
-      const search = window.location.search;
-
-      console.log('🔐 AuthCallbackPage: Starting OAuth callback processing');
+      console.log('🔐 AuthCallbackPage: Waiting for Supabase to process OAuth...');
       console.log('📍 URL:', currentUrl);
-      console.log('📍 Hash:', hash);
-      console.log('📍 Search:', search);
+      setDebugInfo('Procesando autenticación...');
 
-      setDebugInfo(`URL: ${currentUrl.substring(0, 100)}...`);
+      // Check for errors in URL
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const queryParams = new URLSearchParams(window.location.search);
+      const errorParam = hashParams.get('error') || queryParams.get('error');
+      const errorDescription = hashParams.get('error_description') || queryParams.get('error_description');
 
-      try {
-        // Parse tokens from URL
-        const hashParams = new URLSearchParams(hash.substring(1));
-        const queryParams = new URLSearchParams(search);
-
-        // Check for access_token in hash (implicit flow) or query params
-        const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
-        const expiresIn = hashParams.get('expires_in') || queryParams.get('expires_in');
-        const tokenType = hashParams.get('token_type') || queryParams.get('token_type');
-
-        // Check for authorization code (PKCE flow)
-        const code = queryParams.get('code');
-
-        // Check for errors
-        const errorParam = hashParams.get('error') || queryParams.get('error');
-        const errorDescription = hashParams.get('error_description') || queryParams.get('error_description');
-
-        console.log('🔍 Parsed params:', {
-          hasAccessToken: !!accessToken,
-          hasRefreshToken: !!refreshToken,
-          hasCode: !!code,
-          hasError: !!errorParam
-        });
-
-        // Handle OAuth errors
-        if (errorParam) {
-          console.error('🔥 OAuth error from provider:', errorParam, errorDescription);
-          setError(errorDescription || errorParam);
-          setStatus('error');
-          return;
-        }
-
-        // CASE 1: We have an access_token directly (implicit grant or hash fragment)
-        if (accessToken) {
-          console.log('✅ Found access_token, setting session manually...');
-          setDebugInfo('Configurando sesión con token...');
-
-          const { data, error: setSessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken || ''
-          });
-
-          if (setSessionError) {
-            console.error('🔥 Error setting session:', setSessionError);
-            setError(setSessionError.message);
-            setStatus('error');
-            return;
-          }
-
-          if (data?.user) {
-            console.log('✅ Session set successfully for:', data.user.email);
-            localStorage.setItem('trucoapp_had_auth', 'true');
-            setStatus('success');
-
-            // Redirect after a short delay
-            setTimeout(() => {
-              window.history.replaceState({}, document.title, '/');
-              window.location.replace('/');
-            }, 1500);
-            return;
-          } else {
-            console.error('🔥 setSession succeeded but no user returned');
-            setError('No se pudo obtener información del usuario');
-            setStatus('error');
-            return;
-          }
-        }
-
-        // CASE 2: We have an authorization code (PKCE flow)
-        if (code) {
-          console.log('✅ Found authorization code, exchanging for session...');
-          setDebugInfo('Intercambiando código por sesión...');
-
-          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-
-          if (exchangeError) {
-            console.error('🔥 Error exchanging code:', exchangeError);
-            setError(exchangeError.message);
-            setStatus('error');
-            return;
-          }
-
-          if (data?.user) {
-            console.log('✅ Code exchange successful for:', data.user.email);
-            localStorage.setItem('trucoapp_had_auth', 'true');
-            setStatus('success');
-
-            setTimeout(() => {
-              window.history.replaceState({}, document.title, '/');
-              window.location.replace('/');
-            }, 1500);
-            return;
-          }
-        }
-
-        // CASE 3: No tokens in URL, maybe session was already set by Supabase
-        console.log('🔍 No tokens in URL, checking for existing session...');
-        setDebugInfo('Verificando sesión existente...');
-
-        // Wait a moment for Supabase to process
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        const { data: { session }, error: getSessionError } = await supabase.auth.getSession();
-
-        if (getSessionError) {
-          console.error('🔥 Error getting session:', getSessionError);
-        }
-
-        if (session?.user) {
-          console.log('✅ Found existing session for:', session.user.email);
-          localStorage.setItem('trucoapp_had_auth', 'true');
-          setStatus('success');
-
-          setTimeout(() => {
-            window.history.replaceState({}, document.title, '/');
-            window.location.replace('/');
-          }, 1500);
-          return;
-        }
-
-        // CASE 4: Still no session, this shouldn't happen
-        console.log('⚠️ No session found after OAuth callback');
-        setDebugInfo('No se encontró sesión');
-        setStatus('timeout');
-
-        setTimeout(() => {
-          window.history.replaceState({}, document.title, '/');
-          window.location.replace('/');
-        }, 3000);
-
-      } catch (err) {
-        console.error('🔥 Unexpected error in OAuth callback:', err);
-        setError(err.message);
+      if (errorParam) {
+        console.error('🔥 OAuth error from provider:', errorParam, errorDescription);
+        setError(errorDescription || errorParam);
         setStatus('error');
+        return;
       }
+
+      // With detectSessionInUrl: true, Supabase automatically processes the tokens
+      // We just need to wait for the session to be available
+      // Poll for session with timeout
+      const maxAttempts = 20; // 10 seconds total
+      const pollInterval = 500; // 500ms between checks
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        console.log(`🔄 Checking for session (attempt ${attempt}/${maxAttempts})...`);
+        setDebugInfo(`Verificando sesión (${attempt}/${maxAttempts})...`);
+
+        try {
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+          if (sessionError) {
+            console.error('🔥 Session error:', sessionError);
+          }
+
+          if (session?.user) {
+            console.log('✅ Session found!', session.user.email);
+            localStorage.setItem('trucoapp_had_auth', 'true');
+            setStatus('success');
+
+            // Clean URL and redirect after short delay
+            setTimeout(() => {
+              window.history.replaceState({}, document.title, '/');
+              window.location.replace('/');
+            }, 1000);
+            return;
+          }
+        } catch (err) {
+          console.error('🔥 Error checking session:', err);
+        }
+
+        // Wait before next attempt
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      }
+
+      // If we get here, no session was found after all attempts
+      console.log('⚠️ No session found after polling');
+      setDebugInfo('No se encontró sesión después de verificar');
+      setStatus('timeout');
+
+      // Redirect to home anyway after timeout
+      setTimeout(() => {
+        window.history.replaceState({}, document.title, '/');
+        window.location.replace('/');
+      }, 2000);
     };
 
-    processOAuthCallback();
+    // Small delay to let Supabase process the URL first
+    setTimeout(handleOAuthCallback, 200);
   }, []);
 
   const handleRetry = () => {

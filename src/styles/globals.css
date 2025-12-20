@@ -201,9 +201,12 @@ html, body {
 
 /* Tab bar specific adjustments for iOS - SIMPLIFIED */
 .ios-tab-bar {
-  /* Core layout - ultra compacto */
-  min-height: auto;
-  padding: 2px 12px 4px 12px;
+  /* Core layout - 7-10% of screen height */
+  min-height: 8vh; /* ~8% of viewport height */
+  max-height: 10vh; /* Max 10% */
+  padding: 8px 12px;
+  /* Extra padding at bottom for PWA home bar */
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
 
   /* Visual styling */
   background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
@@ -214,12 +217,18 @@ html, body {
   /* iPhone specific fixes */
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
+
+  /* Prevent any overflow */
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
-/* Mobile: tab bar ultra compacto */
+/* Mobile: tab bar with proper height */
 @media (max-width: 640px) {
   .ios-tab-bar {
-    padding: 0px 4px 0px 4px;
+    min-height: 9vh; /* Slightly larger on mobile */
+    padding: 6px 8px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
   }
 }
 
