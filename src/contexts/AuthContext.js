@@ -369,16 +369,20 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (!authService.isMockMode() && authService.supabase) {
       console.log('🔄 AuthContext: Setting up Supabase auth listener');
+      console.log('📍 Current URL:', window.location.href);
+      console.log('📍 Supabase URL:', authService.supabase.supabaseUrl);
 
       // Marcar que estamos cargando
       dispatch({ type: 'AUTH_LOADING' });
 
       let isProcessing = false;
       let initTimeout = null;
+      let hasReceivedEvent = false;
 
       // Setup auth state change listener
       const { data: { subscription } } = authService.supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('🔐 AuthContext detected auth change:', event, session?.user?.email || 'no session');
+        hasReceivedEvent = true;
 
         // Clear init timeout since we got an event
         if (initTimeout) {
@@ -518,20 +522,48 @@ export const AuthProvider = ({ children }) => {
 
       checkSession();
 
-      // Safety timeout - if no auth event received in 5 seconds, go anonymous
+      // Safety timeout - if no auth event received in 3 seconds, go anonymous
       // This handles cases where Supabase gets stuck (network issues, invalid tokens, etc)
       initTimeout = setTimeout(() => {
-        console.log('⏱️ Auth init timeout - no event received, checking session state');
-        authService.supabase.auth.getSession().then(({ data: { session }, error }) => {
-          if (error || !session?.user) {
-            console.log('⏱️ Timeout: No valid session, going anonymous');
-            clearInvalidSession();
+        console.log('⏱️ Auth init timeout (3s) - hasReceivedEvent:', hasReceivedEvent);
+        if (!hasReceivedEvent) {
+          console.log('⏱️ No auth event received, forcing session check...');
+          authService.supabase.auth.getSession().then(({ data: { session }, error }) => {
+            console.log('⏱️ Timeout session check result:', { hasSession: !!session?.user, error: error?.message });
+            if (error || !session?.user) {
+              console.log('⏱️ Timeout: No valid session, going anonymous');
+              clearInvalidSession();
+              dispatch({ type: 'SET_ANONYMOUS' });
+            } else {
+              console.log('⏱️ Found session on timeout, processing...');
+              // Manually trigger auth success since listener didn't fire
+              const userEmail = session.user.email || '';
+              const emailUsername = userEmail.includes('@') ? userEmail.split('@')[0] : 'Usuario';
+              dispatch({
+                type: 'AUTH_SUCCESS',
+                payload: {
+                  user: {
+                    id: session.user.id,
+                    email: userEmail,
+                    name: session.user.user_metadata?.full_name || emailUsername,
+                    username: null,
+                    avatar: session.user.user_metadata?.avatar_url || null,
+                    provider: session.user.app_metadata?.provider || AUTH_PROVIDERS.GOOGLE,
+                    createdAt: session.user.created_at,
+                    lastLoginAt: new Date().toISOString()
+                  },
+                  token: session.access_token,
+                  refreshToken: session.refresh_token,
+                  expiresAt: new Date(Date.now() + (session.expires_in || 3600) * 1000).toISOString()
+                }
+              });
+            }
+          }).catch((e) => {
+            console.error('⏱️ Timeout session check error:', e);
             dispatch({ type: 'SET_ANONYMOUS' });
-          }
-        }).catch(() => {
-          dispatch({ type: 'SET_ANONYMOUS' });
-        });
-      }, 5000);
+          });
+        }
+      }, 3000);
 
       return () => {
         console.log('🧹 Cleaning up auth listener');

@@ -241,6 +241,10 @@ html, body {
   clip: auto;
   -webkit-clip-path: none;
   clip-path: none;
+
+  /* Force display and visibility */
+  display: block !important;
+  visibility: visible !important;
 }
 
 /* Mobile: tab bar with proper height */
@@ -249,6 +253,33 @@ html, body {
     min-height: 65px;
     padding: 6px 8px;
     padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
+  }
+}
+
+/* Very small screens (iPhone SE, etc) - ensure tab bar is always visible */
+@media (max-height: 700px) {
+  .ios-tab-bar {
+    min-height: 55px !important;
+    padding: 4px 6px !important;
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 12px)) !important;
+  }
+
+  /* Reduce content height to make room for tab bar */
+  :root {
+    --tab-bar-height: 55px;
+  }
+}
+
+/* Extra small screens (under 600px height) */
+@media (max-height: 600px) {
+  .ios-tab-bar {
+    min-height: 50px !important;
+    padding: 2px 4px !important;
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 8px)) !important;
+  }
+
+  :root {
+    --tab-bar-height: 50px;
   }
 }
 
