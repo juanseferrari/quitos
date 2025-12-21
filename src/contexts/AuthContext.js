@@ -182,9 +182,67 @@ const authReducer = (state, action) => {
 
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialAuthState);
-  
+
   // Usar authService real si está configurado, sino mockAuthService
   const api = authService.isMockMode() ? mockAuthService : authService;
+
+  // DEV HELPERS - Solo disponibles en localhost
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+      // Helper para login mock desde la consola
+      window.devLogin = (email = 'dev@test.com', name = 'Dev User') => {
+        console.log('🔧 DEV: Logging in as mock user...');
+        const mockUser = {
+          id: 'dev-user-' + Date.now(),
+          email,
+          name,
+          username: email.split('@')[0],
+          avatar: null,
+          provider: 'dev',
+          createdAt: new Date().toISOString(),
+          lastLoginAt: new Date().toISOString()
+        };
+
+        dispatch({
+          type: 'AUTH_SUCCESS',
+          payload: {
+            user: mockUser,
+            token: 'dev-token-' + Date.now(),
+            refreshToken: 'dev-refresh-' + Date.now(),
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+          }
+        });
+
+        localStorage.setItem('trucoapp_had_auth', 'true');
+        console.log('✅ DEV: Logged in as', email);
+        return mockUser;
+      };
+
+      // Helper para logout desde la consola
+      window.devLogout = () => {
+        console.log('🔧 DEV: Logging out...');
+        dispatch({ type: 'LOGOUT' });
+        console.log('✅ DEV: Logged out');
+      };
+
+      // Helper para ver el estado actual
+      window.devAuthState = () => {
+        console.log('🔧 DEV: Current auth state:', {
+          isAuthenticated: state.session.isAuthenticated,
+          isAnonymous: state.session.isAnonymous,
+          user: state.user,
+          appState: state.app.state
+        });
+        return state;
+      };
+
+      // Mostrar instrucciones en consola
+      console.log('🔧 DEV HELPERS disponibles:');
+      console.log('   window.devLogin("email@test.com", "Nombre") - Login mock');
+      console.log('   window.devLogout() - Logout');
+      console.log('   window.devAuthState() - Ver estado actual');
+    }
+  }, [state]);
   
   // Inicialización
   useEffect(() => {
@@ -212,10 +270,17 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: 'AUTH_LOADING' });
 
       let isProcessing = false;
+      let initTimeout = null;
 
       // Setup auth state change listener
       const { data: { subscription } } = authService.supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('🔐 AuthContext detected auth change:', event, session?.user?.email || 'no session');
+
+        // Clear init timeout since we got an event
+        if (initTimeout) {
+          clearTimeout(initTimeout);
+          initTimeout = null;
+        }
 
         // Prevent double processing
         if (isProcessing) {
@@ -281,15 +346,55 @@ export const AuthProvider = ({ children }) => {
           console.log('🚪 User signed out');
           dispatch({ type: 'LOGOUT' });
         }
+        // TOKEN_REFRESHED without session = refresh failed, clear invalid session
+        else if (event === 'TOKEN_REFRESHED' && !session) {
+          console.log('⚠️ Token refresh failed, clearing invalid session');
+          clearInvalidSession();
+          dispatch({ type: 'SET_ANONYMOUS' });
+        }
       });
 
-      // Check for existing session on mount
+      // Helper to clear corrupted/invalid session data
+      const clearInvalidSession = () => {
+        console.log('🧹 Clearing invalid session data from localStorage');
+        // Clear all possible Supabase session keys
+        const keysToRemove = [
+          'rey-del-truco-auth',
+          'sb-pmymvwpgjacrkbimccao-auth-token',
+          'supabase.auth.token',
+          'trucoapp_token',
+          'trucoapp_refresh_token'
+        ];
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+      };
+
+      // Check for existing session on mount with error handling
       const checkSession = async () => {
         // Small delay to let the listener set up
         await new Promise(resolve => setTimeout(resolve, 100));
 
         try {
-          const { data: { session } } = await authService.supabase.auth.getSession();
+          const { data: { session }, error } = await authService.supabase.auth.getSession();
+
+          // Handle refresh token errors (400 Bad Request)
+          if (error) {
+            console.error('🔥 Session check error:', error.message);
+            // If refresh token is invalid, clear everything and go anonymous
+            if (error.message?.includes('Invalid') ||
+                error.message?.includes('expired') ||
+                error.status === 400) {
+              console.log('🔄 Invalid/expired session, clearing and going anonymous');
+              clearInvalidSession();
+              // Force sign out to clear Supabase internal state
+              try {
+                await authService.supabase.auth.signOut();
+              } catch (e) {
+                // Ignore signout errors
+              }
+            }
+            dispatch({ type: 'SET_ANONYMOUS' });
+            return;
+          }
 
           if (session?.user) {
             console.log('✅ Found existing session on mount:', session.user.email);
@@ -301,15 +406,32 @@ export const AuthProvider = ({ children }) => {
             dispatch({ type: 'SET_ANONYMOUS' });
           }
         } catch (error) {
-          console.error('🔥 Session check error:', error);
+          console.error('🔥 Session check exception:', error);
+          clearInvalidSession();
           dispatch({ type: 'SET_ANONYMOUS' });
         }
       };
 
       checkSession();
 
+      // Safety timeout - if no auth event received in 5 seconds, go anonymous
+      // This handles cases where Supabase gets stuck (network issues, invalid tokens, etc)
+      initTimeout = setTimeout(() => {
+        console.log('⏱️ Auth init timeout - no event received, checking session state');
+        authService.supabase.auth.getSession().then(({ data: { session }, error }) => {
+          if (error || !session?.user) {
+            console.log('⏱️ Timeout: No valid session, going anonymous');
+            clearInvalidSession();
+            dispatch({ type: 'SET_ANONYMOUS' });
+          }
+        }).catch(() => {
+          dispatch({ type: 'SET_ANONYMOUS' });
+        });
+      }, 5000);
+
       return () => {
         console.log('🧹 Cleaning up auth listener');
+        if (initTimeout) clearTimeout(initTimeout);
         subscription?.unsubscribe();
       };
     }

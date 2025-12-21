@@ -179,17 +179,12 @@ export const useAuth = () => {
     try {
       if (!authService.isMockMode()) {
         console.log('🔐 Signing out with Supabase...');
-        
-        // Reduced timeout to 2 seconds for faster UX
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('SignOut timeout after 2 seconds')), 2000)
-        );
-        
+
         // Sign out but don't wait for completion - clear local state immediately
         authService.signOut().catch(error => {
           console.warn('⚠️ Supabase signOut error (non-blocking):', error);
         });
-        
+
         console.log('✅ Supabase signOut initiated (non-blocking)');
       } else {
         console.log('⚠️ Mock: Signing out...');
@@ -205,7 +200,7 @@ export const useAuth = () => {
       // Clear local storage immediately for fast UX
       localStorage.removeItem('trucoapp_token');
       localStorage.removeItem('trucoapp_refresh_token');
-      
+
       dispatch({ type: 'LOGOUT' });
       console.log('✅ LOGOUT dispatch completed');
     }

@@ -65,13 +65,13 @@ const HomeScreen = ({ onNavigateToPlay, onShowAuth }) => {
         </div>
       </div>
       
-      <div className="p-4 space-y-6 max-w-md mx-auto">
+      <div className="p-4 space-y-6">
         {/* Acciones Rápidas */}
-        <div className="bg-[#2a2a2a] rounded-lg p-4 border border-[#D4A574] border-opacity-20">
-          <h2 className="text-lg font-bold text-[#D4A574] mb-4 text-center">
+        <div className="bg-[#2a2a2a] rounded-lg p-6 border border-[#D4A574] border-opacity-20">
+          <h2 className="text-lg font-bold text-[#D4A574] mb-6 text-center">
             ⚡ ACCIONES RÁPIDAS
           </h2>
-          
+
           <div className="space-y-3">
             <button
               onClick={onNavigateToPlay}
