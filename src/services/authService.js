@@ -468,8 +468,17 @@ class AuthService {
 
   // Get user's friends
   async getFriends() {
-    if (!this.isConfigured || !this.currentUser) {
+    if (!this.isConfigured) {
       return [];
+    }
+
+    // Get current user if not already set
+    if (!this.currentUser) {
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return [];
+      }
+      this.currentUser = user;
     }
 
     try {
@@ -514,8 +523,17 @@ class AuthService {
 
   // Get pending friend requests (received)
   async getPendingRequests() {
-    if (!this.isConfigured || !this.currentUser) {
+    if (!this.isConfigured) {
       return [];
+    }
+
+    // Get current user if not already set
+    if (!this.currentUser) {
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return [];
+      }
+      this.currentUser = user;
     }
 
     try {

@@ -91,148 +91,139 @@ const AnotadorTruco = ({ onShowAuth }) => {
 
   const renderPantallaJuego = () => (
     <ScreenContainer className="rey-premium-layout-mobile" noScroll={true}>
-      {/* NUEVO: Contenedor flex optimizado para viewport completo */}
-      <div className="h-full flex flex-col rey-premium-container-mobile-optimized">
-        
-        {/* SECCIÓN UNIFICADA: Área de rayitas con headers y botones alineados */}
-        <div className="flex flex-1 w-full min-h-0">
-          {/* Columna Jugador 1 */}
-          <div className="flex-1 flex flex-col">
-            {/* Header Jugador 1 */}
-            <div className="text-center p-1 flex-shrink-0">
-              <input
-                type="text"
-                value={jugador1}
-                onChange={(e) => setJugador1(e.target.value)}
-                className={`rey-premium-player-input-compact ${
-                  nosAlVerde ? 'rey-premium-input-winner' : ''
-                }`}
-                placeholder="Nosotros"
-                maxLength={15}
-              />
-              <div className="mt-0.5">
-                <span className={`rey-premium-score-display-compact ${
-                  nosAlVerde ? 'rey-premium-score-winner' : ''
-                }`}>
-                  {puntosNos}
-                </span>
-              </div>
-            </div>
-            
-            {/* Rayitas Jugador 1 */}
-            <div className="flex-1 p-1">
-              <div 
-                className="h-full flex items-center justify-center overflow-hidden cursor-pointer select-none rey-premium-score-area-optimized" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (!hayGanador) {
-                    sumarPunto('nos');
-                    verifyPointScored('nos');
-                  }
-                }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (!hayGanador) {
-                    sumarPunto('nos');
-                    verifyPointScored('nos');
-                  }
-                }}
-                style={{ touchAction: 'manipulation' }}
-              >
-                <ScoreDisplay puntos={puntosNos} puntosTotales={puntosTotales} />
-              </div>
-            </div>
-            
-            {/* Botón Corrección Jugador 1 */}
-            <div className="flex justify-center items-center flex-shrink-0 py-1">
-              <button
-                onClick={() => restarPunto('nos')}
-                disabled={hayGanador}
-                className={`rey-premium-score-button-mobile rey-premium-score-button-minus ${hayGanador ? 'disabled' : ''}`}
-              >
-                −
-              </button>
-            </div>
+      {/* Contenedor principal con altura 100% - distribuido por porcentajes */}
+      <div className="h-full w-full flex flex-col rey-premium-container-mobile-optimized">
+
+        {/* FILA 1: Headers con nombres y puntaje numérico (~12%) */}
+        <div className="flex w-full" style={{ height: '12%', minHeight: '60px' }}>
+          {/* Header Jugador 1 */}
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <input
+              type="text"
+              value={jugador1}
+              onChange={(e) => setJugador1(e.target.value)}
+              className={`rey-premium-player-input-compact ${
+                nosAlVerde ? 'rey-premium-input-winner' : ''
+              }`}
+              placeholder="Nosotros"
+              maxLength={15}
+            />
+            <span className={`rey-premium-score-display-compact ${
+              nosAlVerde ? 'rey-premium-score-winner' : ''
+            }`}>
+              {puntosNos}
+            </span>
           </div>
 
-          {/* Columna central - Sin trono */}
+          {/* Separador central */}
           <div className="w-4"></div>
 
-          {/* Columna Jugador 2 */}
-          <div className="flex-1 flex flex-col">
-            {/* Header Jugador 2 */}
-            <div className="text-center p-1 flex-shrink-0">
-              <input
-                type="text"
-                value={jugador2}
-                onChange={(e) => setJugador2(e.target.value)}
-                className={`rey-premium-player-input-compact ${
-                  ellosAlVerde ? 'rey-premium-input-winner' : ''
-                }`}
-                placeholder="Ellos"
-                maxLength={15}
-              />
-              <div className="mt-0.5">
-                <span className={`rey-premium-score-display-compact ${
-                  ellosAlVerde ? 'rey-premium-score-winner' : ''
-                }`}>
-                  {puntosEllos}
-                </span>
-              </div>
-            </div>
-
-            {/* Rayitas Jugador 2 */}
-            <div className="flex-1 p-1">
-              <div
-                className="h-full flex items-center justify-center overflow-hidden cursor-pointer select-none rey-premium-score-area-optimized"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (!hayGanador) {
-                    sumarPunto('ellos');
-                    verifyPointScored('ellos');
-                  }
-                }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (!hayGanador) {
-                    sumarPunto('ellos');
-                    verifyPointScored('ellos');
-                  }
-                }}
-                style={{ touchAction: 'manipulation' }}
-              >
-                <ScoreDisplay puntos={puntosEllos} puntosTotales={puntosTotales} />
-              </div>
-            </div>
-
-            {/* Botón Corrección Jugador 2 */}
-            <div className="flex justify-center items-center flex-shrink-0 py-1">
-              <button
-                onClick={() => restarPunto('ellos')}
-                disabled={hayGanador}
-                className={`rey-premium-score-button-mobile rey-premium-score-button-minus ${hayGanador ? 'disabled' : ''}`}
-              >
-                −
-              </button>
-            </div>
+          {/* Header Jugador 2 */}
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <input
+              type="text"
+              value={jugador2}
+              onChange={(e) => setJugador2(e.target.value)}
+              className={`rey-premium-player-input-compact ${
+                ellosAlVerde ? 'rey-premium-input-winner' : ''
+              }`}
+              placeholder="Ellos"
+              maxLength={15}
+            />
+            <span className={`rey-premium-score-display-compact ${
+              ellosAlVerde ? 'rey-premium-score-winner' : ''
+            }`}>
+              {puntosEllos}
+            </span>
           </div>
         </div>
 
-        {/* SECCIÓN 4: Controles principales (altura fija mínima) */}
-        <div className="rey-premium-controls-area-compact flex-shrink-0 mt-1">
-          <div className="flex justify-center gap-1 flex-wrap">
+        {/* FILA 2: Área de rayitas - zona principal táctil (~70%) */}
+        <div className="flex w-full" style={{ height: '65%' }}>
+          {/* Rayitas Jugador 1 */}
+          <div
+            className="flex-1 flex items-center justify-center overflow-hidden cursor-pointer select-none rey-premium-score-area-optimized"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!hayGanador) {
+                sumarPunto('nos');
+                verifyPointScored('nos');
+              }
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!hayGanador) {
+                sumarPunto('nos');
+                verifyPointScored('nos');
+              }
+            }}
+            style={{ touchAction: 'manipulation' }}
+          >
+            <ScoreDisplay puntos={puntosNos} puntosTotales={puntosTotales} />
+          </div>
+
+          {/* Separador central */}
+          <div className="w-4"></div>
+
+          {/* Rayitas Jugador 2 */}
+          <div
+            className="flex-1 flex items-center justify-center overflow-hidden cursor-pointer select-none rey-premium-score-area-optimized"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!hayGanador) {
+                sumarPunto('ellos');
+                verifyPointScored('ellos');
+              }
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!hayGanador) {
+                sumarPunto('ellos');
+                verifyPointScored('ellos');
+              }
+            }}
+            style={{ touchAction: 'manipulation' }}
+          >
+            <ScoreDisplay puntos={puntosEllos} puntosTotales={puntosTotales} />
+          </div>
+        </div>
+
+        {/* FILA 3: Botones de corrección (-) (~10%) */}
+        <div className="flex w-full items-center justify-around" style={{ height: '8%', minHeight: '44px' }}>
+          <button
+            onClick={() => restarPunto('nos')}
+            disabled={hayGanador}
+            className={`rey-premium-score-button-mobile rey-premium-score-button-minus ${hayGanador ? 'disabled' : ''}`}
+          >
+            −
+          </button>
+
+          <div className="w-4"></div>
+
+          <button
+            onClick={() => restarPunto('ellos')}
+            disabled={hayGanador}
+            className={`rey-premium-score-button-mobile rey-premium-score-button-minus ${hayGanador ? 'disabled' : ''}`}
+          >
+            −
+          </button>
+        </div>
+
+        {/* FILA 4: Controles del juego (Falta Envido, Reiniciar, Historial) (~10%) */}
+        <div className="flex w-full items-center justify-center rey-premium-controls-area-compact px-2" style={{ height: '10%', minHeight: '50px' }}>
+          <div className="flex justify-center gap-2 w-full max-w-lg">
             <button
               onClick={() => setMostrarModalFalta(true)}
               disabled={hayGanador}
-              className="rey-premium-action-button-compact rey-premium-action-button-danger"
+              className="rey-premium-action-button-compact rey-premium-action-button-danger flex-1 py-3 text-sm font-bold"
             >
               FALTA ENVIDO
             </button>
-            
+
             <button
               onClick={() => {
                 if (partidaEnProgreso && !hayGanador) {
@@ -241,15 +232,15 @@ const AnotadorTruco = ({ onShowAuth }) => {
                   setPantallaActual('inicio');
                 }
               }}
-              className="rey-premium-action-button-compact rey-premium-action-button-primary"
+              className="rey-premium-action-button-compact rey-premium-action-button-primary flex-1 py-3 text-sm font-bold"
             >
               {partidaEnProgreso && !hayGanador ? 'REINICIAR' : 'MENÚ'}
             </button>
-            
+
             {historial.length > 0 && (
               <button
                 onClick={() => setPantallaActual('historial')}
-                className="rey-premium-action-button-compact"
+                className="rey-premium-action-button-compact flex-1 py-3 text-sm font-bold"
               >
                 HISTORIAL
               </button>

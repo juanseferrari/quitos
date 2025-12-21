@@ -236,9 +236,113 @@ export const AuthProvider = ({ children }) => {
         return state;
       };
 
+      // Helper para impersonar un usuario REAL de Supabase por email
+      window.devImpersonate = async (email) => {
+        console.log('🔧 DEV: Impersonating real user:', email);
+
+        if (!authService.supabase) {
+          console.error('❌ Supabase not configured');
+          return null;
+        }
+
+        try {
+          // 1. Buscar el usuario en la tabla users por email
+          const { data: userProfile, error: profileError } = await authService.supabase
+            .from('users')
+            .select('*')
+            .eq('email', email)
+            .single();
+
+          if (profileError || !userProfile) {
+            console.error('❌ User not found:', email, profileError);
+            return null;
+          }
+
+          console.log('✅ Found user profile:', userProfile);
+
+          // 2. Crear un mock user object basado en el perfil real
+          const mockUser = {
+            id: userProfile.auth_uid, // El auth_uid real de Supabase
+            email: userProfile.email,
+            name: userProfile.name,
+            username: userProfile.display_name,
+            avatar: userProfile.avatar_url,
+            provider: 'dev-impersonate',
+            createdAt: userProfile.created_at,
+            lastLoginAt: new Date().toISOString()
+          };
+
+          // 3. Setear el usuario en authService para que funcionen getFriends, etc.
+          authService.currentUser = { id: userProfile.auth_uid };
+          authService.userProfile = userProfile;
+
+          // 4. Dispatch AUTH_SUCCESS
+          dispatch({
+            type: 'AUTH_SUCCESS',
+            payload: {
+              user: mockUser,
+              token: 'dev-impersonate-token-' + Date.now(),
+              refreshToken: 'dev-impersonate-refresh-' + Date.now(),
+              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+            }
+          });
+
+          localStorage.setItem('trucoapp_had_auth', 'true');
+          console.log('✅ DEV: Now impersonating', email);
+          console.log('📊 Profile:', userProfile);
+
+          // 5. Cargar datos adicionales del usuario
+          const friends = await authService.getFriends();
+          const pendingRequests = await authService.getPendingRequests();
+          console.log('👥 Friends:', friends.length);
+          console.log('📬 Pending requests:', pendingRequests.length);
+
+          return { user: mockUser, profile: userProfile, friends, pendingRequests };
+        } catch (error) {
+          console.error('🔥 DEV: Impersonate error:', error);
+          return null;
+        }
+      };
+
+      // Helper para listar usuarios disponibles
+      window.devListUsers = async () => {
+        console.log('🔧 DEV: Listing available users...');
+
+        if (!authService.supabase) {
+          console.error('❌ Supabase not configured');
+          return [];
+        }
+
+        try {
+          const { data: users, error } = await authService.supabase
+            .from('users')
+            .select('email, display_name, name, created_at')
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+          if (error) {
+            console.error('❌ Error listing users:', error);
+            return [];
+          }
+
+          console.log('📋 Available users:');
+          users.forEach((u, i) => {
+            console.log(`   ${i + 1}. ${u.email} ${u.display_name ? `(@${u.display_name})` : ''} - ${u.name || 'Sin nombre'}`);
+          });
+          console.log('\n💡 Uso: window.devImpersonate("email@example.com")');
+
+          return users;
+        } catch (error) {
+          console.error('🔥 Error:', error);
+          return [];
+        }
+      };
+
       // Mostrar instrucciones en consola
       console.log('🔧 DEV HELPERS disponibles:');
       console.log('   window.devLogin("email@test.com", "Nombre") - Login mock');
+      console.log('   window.devImpersonate("email@real.com") - Impersonar usuario REAL de Supabase');
+      console.log('   window.devListUsers() - Listar usuarios disponibles');
       console.log('   window.devLogout() - Logout');
       console.log('   window.devAuthState() - Ver estado actual');
     }

@@ -12,14 +12,18 @@
 /* Ensure root elements don't interfere with iOS viewport */
 html, body {
   height: 100%;
-  overflow: hidden;
-  position: fixed;
   width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  /* Remove position: fixed to allow fixed children to work properly */
 }
 
 #root {
   height: 100%;
-  overflow: hidden;
+  width: 100%;
+  position: relative;
+  /* Don't use overflow: hidden here - it clips fixed position children */
 }
 
 /* =================================================================
@@ -63,9 +67,10 @@ html, body {
   /* Unified viewport system - Single source of truth */
   --app-height: 100dvh;
   --safe-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-  --tab-bar-height: 60px; /* Reduced from 80px for better mobile experience */
-  --content-height: calc(var(--safe-height) - var(--tab-bar-height));
-  --game-content-height: calc(var(--content-height) - 40px); /* Reduced from 80px for mobile */
+  --tab-bar-height: 65px; /* Base tab bar height */
+  --tab-bar-total-height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 20px)); /* Tab bar + safe area for fixed positioning */
+  --content-height: calc(100dvh - env(safe-area-inset-top) - var(--tab-bar-total-height));
+  --game-content-height: calc(var(--content-height) - 20px); /* Extra space for controls */
   
   /* Z-index hierarchy system */
   --z-background: 1;     /* Background effects (particles, bokeh) */
@@ -199,11 +204,18 @@ html, body {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Tab bar specific adjustments for iOS - SIMPLIFIED */
+/* Tab bar specific adjustments for iOS - FIXED POSITION */
 .ios-tab-bar {
-  /* Core layout - 7-10% of screen height */
-  min-height: 8vh; /* ~8% of viewport height */
-  max-height: 10vh; /* Max 10% */
+  /* Fixed position at bottom - MUST be visible on all devices */
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 99999 !important; /* Very high z-index to ensure visibility */
+
+  /* Core layout */
+  height: auto;
+  min-height: 65px;
   padding: 8px 12px;
   /* Extra padding at bottom for PWA home bar */
   padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
@@ -214,21 +226,29 @@ html, body {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 
-  /* iPhone specific fixes */
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
+  /* iPhone specific fixes - force GPU layer */
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 
-  /* Prevent any overflow */
-  overflow: hidden;
-  flex-shrink: 0;
+  /* Prevent any overflow and touch issues */
+  overflow: visible;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+
+  /* Ensure it's always visible - never clipped */
+  clip: auto;
+  -webkit-clip-path: none;
+  clip-path: none;
 }
 
 /* Mobile: tab bar with proper height */
 @media (max-width: 640px) {
   .ios-tab-bar {
-    min-height: 9vh; /* Slightly larger on mobile */
+    min-height: 65px;
     padding: 6px 8px;
-    padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+    padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
   }
 }
 

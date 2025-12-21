@@ -1,27 +1,22 @@
 // components/IOSContainer.jsx - Componente específico para iOS safe areas
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useIOSViewport } from '../hooks/useIOSViewport';
 
 const IOSContainer = ({ children, className = '' }) => {
-  const { isIOS, isKeyboardOpen } = useIOSViewport();
-
-  // Force layout recalculation when keyboard state changes
-  useEffect(() => {
-    if (!isKeyboardOpen) {
-      // Small delay to ensure DOM is updated
-      const timer = setTimeout(() => {
-        window.scrollTo(0, 0);
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [isKeyboardOpen]);
+  const { isIOS } = useIOSViewport();
 
   return (
-    <div className={`
-      h-screen-dynamic flex flex-col overflow-hidden
-      ${isIOS ? 'ios-safe-container-no-bottom' : 'flex flex-col h-screen'}
-      ${className}
-    `}>
+    <div
+      className={`
+        h-screen-dynamic flex flex-col
+        ${isIOS ? 'ios-safe-container-no-bottom' : 'flex flex-col h-screen'}
+        ${className}
+      `}
+      style={{
+        // Don't use overflow: hidden - it clips fixed position children like tab bar
+        position: 'relative',
+      }}
+    >
       {children}
     </div>
   );
@@ -29,10 +24,17 @@ const IOSContainer = ({ children, className = '' }) => {
 
 export const IOSContentArea = ({ children, className = '', noScroll = false }) => {
   return (
-    <div className={`
-      flex-1 min-h-0 ${noScroll ? 'overflow-hidden' : 'overflow-y-auto ios-smooth-scroll overflow-x-hidden'}
-      ${className}
-    `}>
+    <div
+      className={`
+        ${noScroll ? 'overflow-hidden' : 'overflow-y-auto ios-smooth-scroll overflow-x-hidden'}
+        ${className}
+      `}
+      style={{
+        // Use CSS variable for height - accounts for fixed tab bar
+        height: 'var(--content-height)',
+        maxHeight: 'var(--content-height)',
+      }}
+    >
       {children}
     </div>
   );
@@ -43,15 +45,12 @@ export const IOSTabBar = ({ children, className = '' }) => {
 
   return (
     <div
-      className={`
-        flex-shrink-0 ios-tab-bar
-        ${isKeyboardOpen ? 'ios-tab-bar-keyboard-open' : ''}
-        ${className}
-      `}
+      className={`ios-tab-bar ${className}`}
       style={{
-        // Force tab bar to bottom when keyboard closes
-        transform: isKeyboardOpen ? 'translateY(100%)' : 'translateY(0)',
-        transition: 'transform 0.2s ease-out'
+        // Hide when keyboard is open
+        opacity: isKeyboardOpen ? 0 : 1,
+        pointerEvents: isKeyboardOpen ? 'none' : 'auto',
+        transition: 'opacity 0.15s ease-out'
       }}
     >
       {children}

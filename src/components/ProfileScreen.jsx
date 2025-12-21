@@ -284,24 +284,26 @@ const ProfileScreen = () => {
             {userProfile?.name || user?.name || 'Usuario'}
           </h2>
 
-          {/* Username */}
-          {!isEditingUsername ? (
+          {/* Username - once set, cannot be changed */}
+          {hasUsername ? (
+            /* Username already set - just display it */
             <div className="mb-4">
-              {hasUsername ? (
-                <p className="text-[#D4A574] text-lg font-medium">
-                  @{userProfile.display_name}
-                </p>
-              ) : (
-                <button
-                  onClick={() => setIsEditingUsername(true)}
-                  className="text-[#D4A574] text-sm underline hover:text-[#E6C589] transition-colors"
-                >
-                  + Crear tu username único
-                </button>
-              )}
+              <p className="text-[#D4A574] text-lg font-medium">
+                @{userProfile.display_name}
+              </p>
+            </div>
+          ) : !isEditingUsername ? (
+            /* No username - show button to create one */
+            <div className="mb-4">
+              <button
+                onClick={() => setIsEditingUsername(true)}
+                className="text-[#D4A574] text-sm underline hover:text-[#E6C589] transition-colors"
+              >
+                + Crear tu username unico
+              </button>
             </div>
           ) : (
-            /* Username Editor */
+            /* Username Editor - only shown when creating new username */
             <div className="mb-4 space-y-3">
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#D4A574] font-bold">@</span>
@@ -314,6 +316,10 @@ const ProfileScreen = () => {
                   className="w-full pl-8 pr-4 py-3 rounded-lg bg-[#0a0a0a] border border-[#D4A574] border-opacity-50 text-[#F5DEB3] placeholder-[#F5DEB3] placeholder-opacity-40 focus:border-[#D4A574] focus:outline-none transition-colors text-center"
                 />
               </div>
+
+              <p className="text-[#F5DEB3] text-xs opacity-50 text-center">
+                El username no se puede cambiar despues
+              </p>
 
               {/* Status indicators */}
               {isCheckingUsername && (
@@ -331,7 +337,7 @@ const ProfileScreen = () => {
                 <button
                   onClick={() => {
                     setIsEditingUsername(false);
-                    setNewUsername(userProfile?.display_name || '');
+                    setNewUsername('');
                     setUsernameError('');
                   }}
                   className="flex-1 py-2 rounded-lg border border-[#F5DEB3] border-opacity-30 text-[#F5DEB3] hover:bg-[#F5DEB3] hover:bg-opacity-10 transition-colors"
@@ -362,15 +368,6 @@ const ProfileScreen = () => {
             }) : 'hace poco'}
           </p>
 
-          {/* Edit username button (if already has one) */}
-          {hasUsername && !isEditingUsername && (
-            <button
-              onClick={() => setIsEditingUsername(true)}
-              className="mt-3 text-[#D4A574] text-xs opacity-70 hover:opacity-100 transition-opacity"
-            >
-              Cambiar username
-            </button>
-          )}
         </div>
 
         {/* Amigos Section */}
