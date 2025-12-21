@@ -13,9 +13,10 @@ import PrivacyPolicy from './PrivacyPolicy';
 import TermsOfService from './TermsOfService';
 
 const AppNavigator = () => {
-  const { isLoading, isAuthenticated, isAnonymous, continueAsAnonymous } = useAuth();
+  const { isLoading, isAuthenticated, isAnonymous, continueAsAnonymous, error: authError } = useAuth();
   const { getOnboardingStep, shouldShowAuthPrompt } = useAuthNavigation();
-  const [currentRoute, setCurrentRoute] = useState('Loading');
+  // Start directly at 'Start' instead of 'Loading' - no loading screen by default
+  const [currentRoute, setCurrentRoute] = useState('Start');
 
   // Check if we're on OAuth callback URL
   const isOAuthCallback = window.location.hash.includes('access_token') ||
@@ -54,8 +55,9 @@ const AppNavigator = () => {
     return <AuthCallbackPage />;
   }
 
-  // Loading inicial
-  if (isLoading || currentRoute === 'Loading') {
+  // Solo mostrar pantalla de carga si hay un error de autenticación
+  // La app ahora carga directo al inicio sin esperar auth
+  if (authError) {
     return <LoadingScreen />;
   }
   
