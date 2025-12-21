@@ -417,29 +417,48 @@ class AuthService {
     }
   }
 
-  // Search users by username
+  // Search users by username or name
   async searchUsers(query) {
-    if (!this.isConfigured || !this.currentUser) {
+    console.log('🔍 searchUsers called with query:', query);
+
+    if (!this.isConfigured) {
+      console.log('❌ Supabase not configured');
       return [];
+    }
+
+    // Get current user if not already set
+    if (!this.currentUser) {
+      console.log('⚠️ currentUser not set, fetching...');
+      const user = await this.getCurrentUser();
+      if (!user) {
+        console.log('❌ Could not get current user');
+        return [];
+      }
+      this.currentUser = user;
     }
 
     try {
       if (!query || query.length < 2) {
+        console.log('❌ Query too short');
         return [];
       }
 
+      console.log('🔍 Searching for users matching:', query);
+
+      // Search by display_name OR name (case insensitive)
       const { data, error } = await this.supabase
         .from('users')
-        .select('id, display_name, name, avatar_url')
+        .select('id, display_name, name, avatar_url, email')
         .neq('auth_uid', this.currentUser.id) // Exclude current user
-        .ilike('display_name', `%${query}%`)
-        .limit(10);
+        .or(`display_name.ilike.%${query}%,name.ilike.%${query}%`)
+        .limit(20);
 
       if (error) {
         console.error('🔥 Error searching users:', error);
         return [];
       }
 
+      console.log('✅ Search results:', data?.length || 0, 'users found');
       return data || [];
     } catch (error) {
       console.error('🔥 searchUsers error:', error);

@@ -1,9 +1,20 @@
 // components/IOSContainer.jsx - Componente específico para iOS safe areas
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useIOSViewport } from '../hooks/useIOSViewport';
 
 const IOSContainer = ({ children, className = '' }) => {
-  const { isIOS } = useIOSViewport();
+  const { isIOS, isKeyboardOpen } = useIOSViewport();
+
+  // Force layout recalculation when keyboard state changes
+  useEffect(() => {
+    if (!isKeyboardOpen) {
+      // Small delay to ensure DOM is updated
+      const timer = setTimeout(() => {
+        window.scrollTo(0, 0);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isKeyboardOpen]);
 
   return (
     <div className={`
@@ -28,11 +39,21 @@ export const IOSContentArea = ({ children, className = '', noScroll = false }) =
 };
 
 export const IOSTabBar = ({ children, className = '' }) => {
+  const { isKeyboardOpen } = useIOSViewport();
+
   return (
-    <div className={`
-      flex-shrink-0 ios-tab-bar
-      ${className}
-    `}>
+    <div
+      className={`
+        flex-shrink-0 ios-tab-bar
+        ${isKeyboardOpen ? 'ios-tab-bar-keyboard-open' : ''}
+        ${className}
+      `}
+      style={{
+        // Force tab bar to bottom when keyboard closes
+        transform: isKeyboardOpen ? 'translateY(100%)' : 'translateY(0)',
+        transition: 'transform 0.2s ease-out'
+      }}
+    >
       {children}
     </div>
   );

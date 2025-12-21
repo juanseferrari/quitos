@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import authService from '../services/authService';
 import ScreenContainer from './ScreenContainer';
+import { APP_NAME, APP_VERSION } from '../config/version';
 
 const ProfileScreen = () => {
   const { user, signOut } = useAuth();
@@ -89,10 +90,23 @@ const ProfileScreen = () => {
 
   // Check username availability with debounce
   useEffect(() => {
+    // Reset states when not editing or username too short
     if (!isEditingUsername || !newUsername || newUsername.length < 3) {
       setUsernameError('');
+      setUsernameSuccess('');
+      setIsCheckingUsername(false);
       return;
     }
+
+    // If username is the same as current, no need to check
+    if (userProfile?.display_name && newUsername === userProfile.display_name) {
+      setUsernameError('');
+      setUsernameSuccess('');
+      setIsCheckingUsername(false);
+      return;
+    }
+
+    let isCancelled = false;
 
     const checkUsername = async () => {
       setIsCheckingUsername(true);
@@ -101,21 +115,32 @@ const ProfileScreen = () => {
 
       try {
         const result = await authService.isUsernameAvailable(newUsername);
-        if (result.available) {
-          setUsernameSuccess('Username disponible');
-        } else {
-          setUsernameError(result.error);
+
+        // Only update state if not cancelled
+        if (!isCancelled) {
+          if (result.available) {
+            setUsernameSuccess('Username disponible');
+          } else {
+            setUsernameError(result.error || 'Username no disponible');
+          }
+          setIsCheckingUsername(false);
         }
       } catch (error) {
-        setUsernameError('Error al verificar username');
-      } finally {
-        setIsCheckingUsername(false);
+        if (!isCancelled) {
+          setUsernameError('Error al verificar username');
+          setIsCheckingUsername(false);
+        }
       }
     };
 
     const timeoutId = setTimeout(checkUsername, 500);
-    return () => clearTimeout(timeoutId);
-  }, [newUsername, isEditingUsername]);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timeoutId);
+      setIsCheckingUsername(false);
+    };
+  }, [newUsername, isEditingUsername, userProfile?.display_name]);
 
   const handleSaveUsername = async () => {
     if (!newUsername || newUsername.length < 3) {
@@ -365,43 +390,85 @@ const ProfileScreen = () => {
           {/* Search for friends */}
           {showSearch && (
             <div className="mb-4 space-y-3">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value.toLowerCase())}
-                placeholder="Buscar por username..."
-                className="w-full px-4 py-2 rounded-lg bg-[#0a0a0a] border border-[#D4A574] border-opacity-50 text-[#F5DEB3] placeholder-[#F5DEB3] placeholder-opacity-40 focus:border-[#D4A574] focus:outline-none transition-colors"
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#D4A574]">🔍</span>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar por nombre o username..."
+                  className="w-full pl-10 pr-4 py-3 rounded-lg bg-[#0a0a0a] border border-[#D4A574] border-opacity-50 text-[#F5DEB3] placeholder-[#F5DEB3] placeholder-opacity-40 focus:border-[#D4A574] focus:outline-none transition-colors"
+                />
+              </div>
 
-              {isSearching && (
-                <p className="text-[#F5DEB3] text-sm opacity-70 text-center">Buscando...</p>
+              {/* Search hint */}
+              {searchQuery.length === 0 && (
+                <p className="text-[#F5DEB3] text-xs opacity-50 text-center">
+                  Escribí al menos 2 caracteres para buscar
+                </p>
               )}
 
-              {/* Search results */}
-              {searchResults.length > 0 && (
-                <div className="space-y-2">
-                  {searchResults.map(result => (
-                    <div key={result.id} className="flex items-center justify-between bg-[#1a1a1a] rounded-lg p-3">
-                      <div className="flex items-center gap-3">
-                        <UserAvatar url={result.avatar_url} name={result.display_name || result.name} size="sm" />
-                        <div>
-                          <p className="text-[#F5DEB3] font-medium">@{result.display_name}</p>
-                          {result.name && <p className="text-[#F5DEB3] text-xs opacity-60">{result.name}</p>}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleSendFriendRequest(result.id)}
-                        className="px-3 py-1 rounded-lg bg-gradient-to-r from-[#D4A574] to-[#C59660] text-[#0a0a0a] text-sm font-semibold hover:shadow-lg transition-all"
+              {searchQuery.length === 1 && (
+                <p className="text-[#F5DEB3] text-xs opacity-50 text-center">
+                  Escribí un caracter más...
+                </p>
+              )}
+
+              {isSearching && (
+                <div className="flex items-center justify-center gap-2 py-4">
+                  <div className="w-4 h-4 border-2 border-[#D4A574] border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-[#F5DEB3] text-sm opacity-70">Buscando usuarios...</p>
+                </div>
+              )}
+
+              {/* Search results table */}
+              {searchResults.length > 0 && !isSearching && (
+                <div className="border border-[#D4A574] border-opacity-30 rounded-lg overflow-hidden">
+                  <div className="bg-[#1a1a1a] px-3 py-2 border-b border-[#D4A574] border-opacity-20">
+                    <p className="text-[#D4A574] text-xs font-medium">
+                      {searchResults.length} usuario{searchResults.length !== 1 ? 's' : ''} encontrado{searchResults.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {searchResults.map(result => (
+                      <div
+                        key={result.id}
+                        className="flex items-center justify-between bg-[#0a0a0a] hover:bg-[#1a1a1a] px-3 py-3 border-b border-[#D4A574] border-opacity-10 last:border-b-0 transition-colors"
                       >
-                        Agregar
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <UserAvatar url={result.avatar_url} name={result.display_name || result.name} size="sm" />
+                          <div className="min-w-0 flex-1">
+                            {result.display_name ? (
+                              <>
+                                <p className="text-[#D4A574] font-medium truncate">@{result.display_name}</p>
+                                {result.name && <p className="text-[#F5DEB3] text-xs opacity-60 truncate">{result.name}</p>}
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-[#F5DEB3] font-medium truncate">{result.name || 'Usuario'}</p>
+                                <p className="text-[#F5DEB3] text-xs opacity-40 truncate">Sin username</p>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleSendFriendRequest(result.id)}
+                          className="ml-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#D4A574] to-[#C59660] text-[#0a0a0a] text-sm font-semibold hover:shadow-lg transition-all flex-shrink-0"
+                        >
+                          + Agregar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
               {searchQuery.length >= 2 && !isSearching && searchResults.length === 0 && (
-                <p className="text-[#F5DEB3] text-sm opacity-70 text-center">No se encontraron usuarios</p>
+                <div className="text-center py-4 bg-[#1a1a1a] rounded-lg">
+                  <p className="text-[#F5DEB3] text-4xl mb-2">🔍</p>
+                  <p className="text-[#F5DEB3] text-sm opacity-70">No se encontraron usuarios</p>
+                  <p className="text-[#F5DEB3] text-xs opacity-50 mt-1">Probá con otro nombre o username</p>
+                </div>
               )}
             </div>
           )}
@@ -483,7 +550,7 @@ const ProfileScreen = () => {
         {/* App Version */}
         <div className="text-center">
           <p className="text-[#F5DEB3] opacity-40 text-xs">
-            Rey del Truco v1.0.0
+            {APP_NAME} v{APP_VERSION}
           </p>
         </div>
 
