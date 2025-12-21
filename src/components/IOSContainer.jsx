@@ -41,16 +41,15 @@ export const IOSContentArea = ({ children, className = '', noScroll = false }) =
 };
 
 export const IOSTabBar = ({ children, className = '' }) => {
-  const { isKeyboardOpen } = useIOSViewport();
-
+  // ALWAYS visible - removed keyboard detection that was hiding it on some devices
   return (
     <div
       className={`ios-tab-bar ${className}`}
       style={{
-        // Hide when keyboard is open
-        opacity: isKeyboardOpen ? 0 : 1,
-        pointerEvents: isKeyboardOpen ? 'none' : 'auto',
-        transition: 'opacity 0.15s ease-out'
+        // Force visibility - never hide
+        opacity: 1,
+        visibility: 'visible',
+        display: 'flex',
       }}
     >
       {children}
