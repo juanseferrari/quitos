@@ -305,13 +305,20 @@ class AuthService {
       console.log('📋 getUserProfile: Fetching profile for auth_uid:', targetUserId);
       console.log('📋 getUserProfile: About to query Supabase...');
 
-      const { data: profile, error } = await this.supabase
+      // Add timeout to detect hanging queries
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Query timeout after 10s')), 10000)
+      );
+
+      const queryPromise = this.supabase
         .from('users')
         .select('*')
         .eq('auth_uid', targetUserId)
         .single();
 
-      console.log('📋 getUserProfile: Query completed');
+      const { data: profile, error } = await Promise.race([queryPromise, timeoutPromise]);
+
+      console.log('📋 getUserProfile: Query completed, profile:', profile?.id, 'error:', error);
 
       if (error) {
         console.error('🔥 Get profile error:', error);
@@ -483,6 +490,16 @@ class AuthService {
       const searchPattern = `%${query}%`;
 
       console.log('🔍 searchUsers: About to query users table...');
+
+      // First, try a simple query to test connection
+      console.log('🔍 searchUsers: Testing simple query first...');
+      const testQuery = await this.supabase
+        .from('users')
+        .select('id')
+        .limit(1);
+      console.log('🔍 searchUsers: Simple test result:', testQuery.data?.length, 'error:', testQuery.error);
+
+      // Now do the actual search
       const { data, error } = await this.supabase
         .from('users')
         .select('id, display_name, name, avatar_url, email')
