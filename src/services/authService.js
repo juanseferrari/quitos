@@ -282,8 +282,21 @@ class AuthService {
     if (!this.isConfigured) return null;
 
     try {
-      const targetUserId = userId || this.currentUser?.id;
-      if (!targetUserId) return null;
+      // Get current user if not passed and not already set
+      let targetUserId = userId || this.currentUser?.id;
+
+      if (!targetUserId) {
+        // Try to get current user from Supabase session
+        const user = await this.getCurrentUser();
+        if (!user) {
+          console.log('⚠️ getUserProfile: No user found');
+          return null;
+        }
+        this.currentUser = user;
+        targetUserId = user.id;
+      }
+
+      console.log('📋 getUserProfile: Fetching profile for auth_uid:', targetUserId);
 
       const { data: profile, error } = await this.supabase
         .from('users')
@@ -291,8 +304,13 @@ class AuthService {
         .eq('auth_uid', targetUserId)
         .single();
 
-      if (error) throw error;
-      
+      if (error) {
+        console.error('🔥 Get profile error:', error);
+        throw error;
+      }
+
+      console.log('✅ getUserProfile: Found profile with display_name:', profile?.display_name);
+      this.userProfile = profile;
       return profile;
     } catch (error) {
       console.error('🔥 Get profile error:', error);
@@ -445,21 +463,33 @@ class AuthService {
 
       console.log('🔍 Searching for users matching:', query);
 
+      // Get current user profile to exclude from results
+      const currentProfile = await this.getUserProfile();
+
       // Search by display_name OR name (case insensitive)
+      // Using separate ilike filters instead of .or() which can have syntax issues
+      const searchPattern = `%${query}%`;
+
       const { data, error } = await this.supabase
         .from('users')
         .select('id, display_name, name, avatar_url, email')
-        .neq('auth_uid', this.currentUser.id) // Exclude current user
-        .or(`display_name.ilike.%${query}%,name.ilike.%${query}%`)
+        .or(`display_name.ilike.${searchPattern},name.ilike.${searchPattern}`)
         .limit(20);
 
       if (error) {
         console.error('🔥 Error searching users:', error);
+        console.error('🔥 Error details:', JSON.stringify(error));
         return [];
       }
 
-      console.log('✅ Search results:', data?.length || 0, 'users found');
-      return data || [];
+      // Filter out current user from results
+      const filteredData = (data || []).filter(user =>
+        currentProfile ? user.id !== currentProfile.id : true
+      );
+
+      console.log('✅ Search results:', filteredData.length, 'users found');
+      console.log('📋 Search results data:', filteredData);
+      return filteredData;
     } catch (error) {
       console.error('🔥 searchUsers error:', error);
       return [];
@@ -469,6 +499,7 @@ class AuthService {
   // Get user's friends
   async getFriends() {
     if (!this.isConfigured) {
+      console.log('❌ getFriends: Supabase not configured');
       return [];
     }
 
@@ -476,6 +507,7 @@ class AuthService {
     if (!this.currentUser) {
       const user = await this.getCurrentUser();
       if (!user) {
+        console.log('❌ getFriends: No current user');
         return [];
       }
       this.currentUser = user;
@@ -483,37 +515,60 @@ class AuthService {
 
     try {
       const currentProfile = await this.getUserProfile();
-      if (!currentProfile) return [];
-
-      // Get friendships where user is either user_id or friend_id and status is accepted
-      const { data, error } = await this.supabase
-        .from('friendships')
-        .select(`
-          id,
-          user_id,
-          friend_id,
-          status,
-          created_at,
-          user:users!friendships_user_id_fkey(id, display_name, name, avatar_url),
-          friend:users!friendships_friend_id_fkey(id, display_name, name, avatar_url)
-        `)
-        .or(`user_id.eq.${currentProfile.id},friend_id.eq.${currentProfile.id}`)
-        .eq('status', 'accepted');
-
-      if (error) {
-        console.error('🔥 Error getting friends:', error);
+      if (!currentProfile) {
+        console.log('❌ getFriends: No current profile');
         return [];
       }
 
-      // Map to friend objects (return the other user in the friendship)
-      const friends = (data || []).map(friendship => {
-        if (friendship.user_id === currentProfile.id) {
-          return { ...friendship.friend, friendship_id: friendship.id };
-        } else {
-          return { ...friendship.user, friendship_id: friendship.id };
-        }
-      });
+      console.log('🔍 getFriends: Looking for friendships for user:', currentProfile.id);
 
+      // Step 1: Get friendships where user is either user_id or friend_id and status is accepted
+      const { data: friendships, error: friendshipsError } = await this.supabase
+        .from('friendships')
+        .select('id, user_id, friend_id, status, created_at')
+        .or(`user_id.eq.${currentProfile.id},friend_id.eq.${currentProfile.id}`)
+        .eq('status', 'accepted');
+
+      if (friendshipsError) {
+        console.error('🔥 Error getting friendships:', friendshipsError);
+        return [];
+      }
+
+      console.log('📋 getFriends: Found friendships:', friendships?.length || 0);
+
+      if (!friendships || friendships.length === 0) {
+        return [];
+      }
+
+      // Step 2: Get the friend user IDs (the other person in each friendship)
+      const friendIds = friendships.map(f =>
+        f.user_id === currentProfile.id ? f.friend_id : f.user_id
+      );
+
+      console.log('📋 getFriends: Friend IDs to fetch:', friendIds);
+
+      // Step 3: Fetch friend profiles
+      const { data: friendProfiles, error: profilesError } = await this.supabase
+        .from('users')
+        .select('id, display_name, name, avatar_url')
+        .in('id', friendIds);
+
+      if (profilesError) {
+        console.error('🔥 Error getting friend profiles:', profilesError);
+        return [];
+      }
+
+      // Step 4: Map friendships to friend objects with friendship_id
+      const friends = friendships.map(friendship => {
+        const friendId = friendship.user_id === currentProfile.id ? friendship.friend_id : friendship.user_id;
+        const friendProfile = friendProfiles?.find(p => p.id === friendId);
+        return {
+          ...friendProfile,
+          friendship_id: friendship.id
+        };
+      }).filter(f => f.id); // Filter out any that didn't have a profile
+
+      console.log('✅ getFriends: Returning', friends.length, 'friends');
       return friends;
     } catch (error) {
       console.error('🔥 getFriends error:', error);
@@ -524,6 +579,7 @@ class AuthService {
   // Get pending friend requests (received)
   async getPendingRequests() {
     if (!this.isConfigured) {
+      console.log('❌ getPendingRequests: Supabase not configured');
       return [];
     }
 
@@ -531,6 +587,7 @@ class AuthService {
     if (!this.currentUser) {
       const user = await this.getCurrentUser();
       if (!user) {
+        console.log('❌ getPendingRequests: No current user');
         return [];
       }
       this.currentUser = user;
@@ -538,29 +595,59 @@ class AuthService {
 
     try {
       const currentProfile = await this.getUserProfile();
-      if (!currentProfile) return [];
-
-      const { data, error } = await this.supabase
-        .from('friendships')
-        .select(`
-          id,
-          user_id,
-          created_at,
-          user:users!friendships_user_id_fkey(id, display_name, name, avatar_url)
-        `)
-        .eq('friend_id', currentProfile.id)
-        .eq('status', 'pending');
-
-      if (error) {
-        console.error('🔥 Error getting pending requests:', error);
+      if (!currentProfile) {
+        console.log('❌ getPendingRequests: No current profile');
         return [];
       }
 
-      return (data || []).map(req => ({
-        ...req.user,
-        friendship_id: req.id,
-        requested_at: req.created_at
-      }));
+      console.log('🔍 getPendingRequests: Looking for pending requests for user:', currentProfile.id);
+
+      // Step 1: Get pending friendships where current user is the friend (receiver)
+      const { data: pendingRequests, error: requestsError } = await this.supabase
+        .from('friendships')
+        .select('id, user_id, created_at')
+        .eq('friend_id', currentProfile.id)
+        .eq('status', 'pending');
+
+      if (requestsError) {
+        console.error('🔥 Error getting pending requests:', requestsError);
+        return [];
+      }
+
+      console.log('📋 getPendingRequests: Found pending requests:', pendingRequests?.length || 0);
+
+      if (!pendingRequests || pendingRequests.length === 0) {
+        return [];
+      }
+
+      // Step 2: Get the sender user IDs
+      const senderIds = pendingRequests.map(r => r.user_id);
+
+      console.log('📋 getPendingRequests: Sender IDs to fetch:', senderIds);
+
+      // Step 3: Fetch sender profiles
+      const { data: senderProfiles, error: profilesError } = await this.supabase
+        .from('users')
+        .select('id, display_name, name, avatar_url')
+        .in('id', senderIds);
+
+      if (profilesError) {
+        console.error('🔥 Error getting sender profiles:', profilesError);
+        return [];
+      }
+
+      // Step 4: Map requests to user objects with friendship_id
+      const requests = pendingRequests.map(req => {
+        const senderProfile = senderProfiles?.find(p => p.id === req.user_id);
+        return {
+          ...senderProfile,
+          friendship_id: req.id,
+          requested_at: req.created_at
+        };
+      }).filter(r => r.id); // Filter out any that didn't have a profile
+
+      console.log('✅ getPendingRequests: Returning', requests.length, 'pending requests');
+      return requests;
     } catch (error) {
       console.error('🔥 getPendingRequests error:', error);
       return [];
