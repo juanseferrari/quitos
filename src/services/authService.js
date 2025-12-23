@@ -296,7 +296,14 @@ class AuthService {
         targetUserId = user.id;
       }
 
+      // Return cached profile if we have it and it's the same user
+      if (this.userProfile && this.userProfile.auth_uid === targetUserId) {
+        console.log('📋 getUserProfile: Returning cached profile');
+        return this.userProfile;
+      }
+
       console.log('📋 getUserProfile: Fetching profile for auth_uid:', targetUserId);
+      console.log('📋 getUserProfile: About to query Supabase...');
 
       const { data: profile, error } = await this.supabase
         .from('users')
@@ -304,8 +311,11 @@ class AuthService {
         .eq('auth_uid', targetUserId)
         .single();
 
+      console.log('📋 getUserProfile: Query completed');
+
       if (error) {
         console.error('🔥 Get profile error:', error);
+        console.error('🔥 Error details:', JSON.stringify(error));
         throw error;
       }
 
@@ -464,17 +474,22 @@ class AuthService {
       console.log('🔍 Searching for users matching:', query);
 
       // Get current user profile to exclude from results
+      console.log('🔍 searchUsers: Getting current profile...');
       const currentProfile = await this.getUserProfile();
+      console.log('🔍 searchUsers: Got current profile:', currentProfile?.id);
 
       // Search by display_name OR name (case insensitive)
       // Using separate ilike filters instead of .or() which can have syntax issues
       const searchPattern = `%${query}%`;
 
+      console.log('🔍 searchUsers: About to query users table...');
       const { data, error } = await this.supabase
         .from('users')
         .select('id, display_name, name, avatar_url, email')
         .or(`display_name.ilike.${searchPattern},name.ilike.${searchPattern}`)
         .limit(20);
+
+      console.log('🔍 searchUsers: Query completed, data:', data?.length, 'error:', error);
 
       if (error) {
         console.error('🔥 Error searching users:', error);
