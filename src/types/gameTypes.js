@@ -28,6 +28,10 @@ export const GAME_ACTIONS = {
   SYNC_COMPLETED: 'SYNC_COMPLETED',
   SET_ONLINE_STATUS: 'SET_ONLINE_STATUS',
   MARK_GAME_RECORDED: 'MARK_GAME_RECORDED',
+
+  // Match/Team (Equipos2)
+  SET_MATCH_NOTES: 'SET_MATCH_NOTES',
+  SET_MATCH_ID: 'SET_MATCH_ID',
   
   // User/Auth (preparado para Fase 1)
   SET_USER: 'SET_USER',
@@ -67,7 +71,12 @@ export const INITIAL_GAME_STATE = {
     ganador: null,
     fechaInicio: null,
     fechaFin: null,
-    historial: []
+    historial: [],
+    // Team selection (Equipos2)
+    teamNosotros: [],  // Array of user objects { id, username, name }
+    teamEllos: [],     // Array of user objects { id, username, name }
+    matchId: null,     // Supabase match record ID
+    matchNotes: null   // User notes for the match
   },
   
   // Configuración de UI

@@ -1,5 +1,5 @@
 // src/components/AnotadorTruco.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../hooks/useGame';
 import { useStats } from '../hooks/useStats';
 import { useGamePersistence } from '../hooks/useGamePersistence';
@@ -8,8 +8,13 @@ import useSwipeBack from '../hooks/useSwipeBack';
 import ScoreDisplay from './ScoreDisplay';
 import PantallaInicio from './PantallaInicio';
 import ScreenContainer from './ScreenContainer';
+import matchService from '../services/matchService';
+import { FEATURE_FLAGS } from '../config/featureFlags';
 
 const AnotadorTruco = ({ onShowAuth }) => {
+  // Local state for match notes input
+  const [notesInput, setNotesInput] = useState('');
+
   // Usar el nuevo hook centralizado
   const {
     // Estado del juego
@@ -20,19 +25,24 @@ const AnotadorTruco = ({ onShowAuth }) => {
     jugador2,
     puntosTotales,
     historial,
-    
+
+    // Team data (Equipos2)
+    teamNosotros,
+    teamEllos,
+    matchId,
+
     // Estado de UI
     pantallaActual,
     mostrarModalFalta,
     mostrarModalVictoria,
     mostrarModalReiniciar,
-    
+
     // Estados derivados
     hayGanador,
     partidaEnProgreso,
     nosAlVerde,
     ellosAlVerde,
-    
+
     // Acciones del juego
     sumarPunto,
     restarPunto,
@@ -40,23 +50,26 @@ const AnotadorTruco = ({ onShowAuth }) => {
     nuevoPartido,
     restaurarPartida,
     limpiarGanador,
-    
+
     // Acciones de configuración
     setJugador1,
     setJugador2,
-    
+
     // Acciones de UI
     setPantallaActual,
     setMostrarModalFalta,
     setMostrarModalReiniciar,
-    
+
+    // Team/Match actions
+    setMatchNotes,
+
     // Funciones calculadas
     calcularPuntosFalta,
     ganaPartido,
-    
+
     // Utilidades
     utils,
-    
+
     // Datos locales y metadata
     meta
   } = useGame();
@@ -68,7 +81,48 @@ const AnotadorTruco = ({ onShowAuth }) => {
   
   // Hook de achievements
   const { verifyPointScored, verifySpecialConditions } = useGameAchievements();
-  
+
+  // Reset notes input when starting a new game
+  useEffect(() => {
+    if (!hayGanador) {
+      setNotesInput('');
+    }
+  }, [hayGanador]);
+
+  // Check if we have team data (Equipos2 mode)
+  const hasTeamData = FEATURE_FLAGS.USE_TEAM_SELECTION &&
+    (teamNosotros.length > 0 || teamEllos.length > 0);
+
+  // Function to save match to Supabase (for Equipos2 mode)
+  const saveMatchToSupabase = async (notes = '') => {
+    if (!matchId || !hasTeamData) {
+      console.log('⏭️ Skipping Supabase save - no matchId or team data');
+      return;
+    }
+
+    try {
+      const winner = ganador === 'nos' ? 'nosotros' : 'ellos';
+      const startTime = meta.lastUpdated ? new Date(meta.lastUpdated - (historial.length * 60000)) : new Date();
+      const durationMinutes = Math.round((Date.now() - startTime.getTime()) / 60000);
+
+      await matchService.finishMatch(matchId, {
+        score_nosotros: puntosNos,
+        score_ellos: puntosEllos,
+        winner,
+        notes: notes || null,
+        game_data: {
+          historial,
+          puntosTotales
+        },
+        duration_minutes: durationMinutes
+      });
+
+      console.log('✅ Match saved to Supabase');
+    } catch (error) {
+      console.error('❌ Error saving match to Supabase:', error);
+    }
+  };
+
   // Función para registrar estadísticas en background (sin bloquear UI)
   const recordStatsInBackground = () => {
     console.log('🔍 NOTA: recordStatsInBackground DESHABILITADO - useGame maneja automáticamente las estadísticas');
@@ -263,7 +317,7 @@ const AnotadorTruco = ({ onShowAuth }) => {
                 limpiarGanador();
               }}
               className="rey-premium-modal-close"
-              style={{ 
+              style={{
                 zIndex: 1000,
                 cursor: 'pointer',
                 touchAction: 'manipulation'
@@ -271,24 +325,45 @@ const AnotadorTruco = ({ onShowAuth }) => {
             >
               ✕
             </button>
-            
+
             <div className="rey-premium-modal-icon">🏆</div>
-            
+
             <h2 className="rey-premium-modal-title">
               ¡Ganó {utils.getNombreJugador(ganador)}!
             </h2>
-            
+
             <p className="rey-premium-modal-text">
               {puntosTotales} puntos, ¡qué partidazo che!
             </p>
-            
+
+            {/* Notes input - only show in Equipos2 mode with team data */}
+            {hasTeamData && (
+              <div className="w-full px-4 mb-4">
+                <textarea
+                  placeholder="Notas de la partida (opcional)"
+                  value={notesInput}
+                  onChange={(e) => setNotesInput(e.target.value)}
+                  className="w-full p-3 bg-[#1a1a1a] border border-[#D4A574] border-opacity-50 rounded-lg text-[#F5DEB3] placeholder-[#F5DEB3] placeholder-opacity-50 text-sm resize-none focus:outline-none focus:border-opacity-100"
+                  rows={2}
+                  maxLength={500}
+                />
+              </div>
+            )}
+
             <div className="rey-premium-modal-buttons">
               <button
-                onClick={() => {
+                onClick={async () => {
                   // 🚀 OPTIMISTIC UI: Responder inmediatamente
                   // El efecto de useGame ya maneja las estadísticas automáticamente
                   console.log('🚀 OTRA VUELTA - Respuesta inmediata');
                   recordStatsInBackground();
+
+                  // Save match notes if in Equipos2 mode
+                  if (hasTeamData) {
+                    setMatchNotes(notesInput);
+                    await saveMatchToSupabase(notesInput);
+                  }
+
                   // Pequeño delay para permitir que se procesen las stats
                   setTimeout(() => {
                     nuevoPartido();
@@ -300,10 +375,17 @@ const AnotadorTruco = ({ onShowAuth }) => {
                 OTRA VUELTA
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   // 🚀 OPTIMISTIC UI: Responder inmediatamente
                   console.log('🚀 FINALIZAR - Respuesta inmediata');
                   recordStatsInBackground();
+
+                  // Save match notes if in Equipos2 mode
+                  if (hasTeamData) {
+                    setMatchNotes(notesInput);
+                    await saveMatchToSupabase(notesInput);
+                  }
+
                   // Pequeño delay para permitir que se procesen las stats
                   setTimeout(() => {
                     // Reiniciar para nueva partida, no ir a menú

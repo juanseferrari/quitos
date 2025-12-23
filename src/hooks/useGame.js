@@ -132,6 +132,15 @@ export const useGame = () => {
     dispatch(actions.toggleModalReiniciar(show));
   }, [dispatch, actions]);
 
+  // Team/Match actions (Equipos2)
+  const setMatchNotes = useCallback((notes) => {
+    dispatch(actions.setMatchNotes(notes));
+  }, [dispatch, actions]);
+
+  const setMatchId = useCallback((matchId) => {
+    dispatch(actions.setMatchId(matchId));
+  }, [dispatch, actions]);
+
   // Funciones calculadas
   const calcularPuntosFalta = useCallback((equipoGanador) => {
     const player = equipoGanador === 'nos' ? PLAYERS.NOS : PLAYERS.ELLOS;
@@ -227,7 +236,13 @@ export const useGame = () => {
     jugador2: game.jugador2,
     puntosTotales: game.puntosTotales,
     historial: game.historial,
-    
+
+    // Team data (Equipos2)
+    teamNosotros: game.teamNosotros || [],
+    teamEllos: game.teamEllos || [],
+    matchId: game.matchId,
+    matchNotes: game.matchNotes,
+
     // Estado de UI
     pantallaActual: ui.pantallaActual,
     mostrarModalFalta: ui.mostrarModalFalta,
@@ -235,10 +250,10 @@ export const useGame = () => {
     mostrarModalReiniciar: ui.mostrarModalReiniciar,
     loading: ui.loading,
     error: ui.error,
-    
+
     // Estado derivado
     ...derived,
-    
+
     // Acciones del juego
     sumarPunto,
     restarPunto,
@@ -246,30 +261,34 @@ export const useGame = () => {
     nuevoPartido,
     restaurarPartida,
     limpiarGanador,
-    
+
     // Acciones de configuración
     setJugador1,
     setJugador2,
     setPuntosTotales,
-    
+
     // Acciones de UI
     setPantallaActual,
     setMostrarModalFalta,
     setMostrarModalVictoria,
     setMostrarModalReiniciar,
 
+    // Team/Match actions (Equipos2)
+    setMatchNotes,
+    setMatchId,
+
     // Funciones calculadas
     calcularPuntosFalta,
     ganaPartido,
-    
+
     // Utilidades
     utils,
-    
+
     // Datos locales y metadata
     localData,
     meta,
     user,
-    
+
     // Estado completo (para casos especiales)
     fullState: state
   };

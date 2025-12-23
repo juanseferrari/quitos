@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import ScreenContainer from './ScreenContainer';
+import TeamSelector from './TeamSelector';
+import { FEATURE_FLAGS } from '../config/featureFlags';
 
 const PantallaInicio = ({ onIniciarPartida, onContinuarPartida, haySavedGame, onShowAuth, showGameSetupDirectly = false }) => {
   const { isAuthenticated } = useAuth();
@@ -11,9 +13,22 @@ const PantallaInicio = ({ onIniciarPartida, onContinuarPartida, haySavedGame, on
     jugador2: 'Ellos',
     puntosTotales: 30
   });
-  
+
+  // Team selection state (Equipos2)
+  const [teamNosotros, setTeamNosotros] = useState([]);
+  const [teamEllos, setTeamEllos] = useState([]);
+
   const iniciarPartida = () => {
-    onIniciarPartida(configuracion);
+    // Include team data if using team selection
+    const configData = {
+      ...configuracion,
+      ...(FEATURE_FLAGS.USE_TEAM_SELECTION && {
+        teamNosotros,
+        teamEllos,
+        useTeamSelection: true,
+      }),
+    };
+    onIniciarPartida(configData);
   };
 
   const renderMainMenu = () => (
@@ -30,8 +45,8 @@ const PantallaInicio = ({ onIniciarPartida, onContinuarPartida, haySavedGame, on
           </p>
         </div>
       </div>
-      
-      <div className="p-4 space-y-4 max-w-md mx-auto">
+
+      <div className="p-4 space-y-4">
         {/* Continue Game Card (si hay partida guardada) */}
         {haySavedGame && (
           <div className="bg-[#2a2a2a] rounded-lg p-4 border border-green-500 border-opacity-40">
@@ -39,7 +54,7 @@ const PantallaInicio = ({ onIniciarPartida, onContinuarPartida, haySavedGame, on
               🎮 PARTIDA EN PROGRESO
             </h2>
             <p className="text-[#F5DEB3] text-sm text-center mb-3">
-              Tenés una partida guardada
+              Tenes una partida guardada
             </p>
             <button
               onClick={onContinuarPartida}
@@ -49,13 +64,13 @@ const PantallaInicio = ({ onIniciarPartida, onContinuarPartida, haySavedGame, on
             </button>
           </div>
         )}
-        
+
         {/* Main Actions Card */}
         <div className="bg-[#2a2a2a] rounded-lg p-4 border border-[#D4A574] border-opacity-20">
           <h2 className="text-md font-bold text-[#D4A574] mb-3 text-center">
             🎯 ACCIONES PRINCIPALES
           </h2>
-          
+
           <div className="space-y-3">
             <button
               onClick={() => setShowGameSetup(true)}
@@ -63,38 +78,38 @@ const PantallaInicio = ({ onIniciarPartida, onContinuarPartida, haySavedGame, on
             >
               🎮 ANOTADOR
             </button>
-            
+
             <p className="text-[#F5DEB3] text-xs text-center opacity-70">
               Empezar una nueva partida de truco
             </p>
           </div>
         </div>
-        
-        {/* Auth Promotion (solo si no está autenticado) */}
+
+        {/* Auth Promotion (solo si no esta autenticado) */}
         {!isAuthenticated && (
           <div className="bg-[#2a2a2a] rounded-lg p-4 border border-[#D4A574] border-opacity-20 text-center">
             <div className="text-2xl mb-2">🏆</div>
             <h3 className="text-md font-bold text-[#D4A574] mb-2">
-              ¿Querés ser el Rey?
+              Queres ser el Rey?
             </h3>
             <p className="text-[#F5DEB3] text-sm mb-3 leading-relaxed">
-              Creá tu cuenta para estadísticas, rankings y competencia.
+              Crea tu cuenta para estadisticas, rankings y competencia.
             </p>
             <button
               onClick={onShowAuth}
               className="py-2 px-4 bg-gradient-to-r from-[#D4A574] to-[#C59660] text-[#0a0a0a] font-bold rounded-lg hover:shadow-lg transition-all duration-300"
             >
-              👑 CREAR CUENTA / INICIAR SESIÓN
+              👑 CREAR CUENTA / INICIAR SESION
             </button>
           </div>
         )}
-        
-        {/* Quick Stats (si está autenticado) */}
+
+        {/* Quick Stats (si esta autenticado) */}
         {isAuthenticated && (
           <div className="bg-[#2a2a2a] rounded-lg p-4 border border-[#D4A574] border-opacity-20 text-center">
             <div className="text-2xl mb-2">⚡</div>
             <h3 className="text-md font-bold text-[#D4A574] mb-2">
-              ¡Bienvenido de vuelta!
+              Bienvenido de vuelta!
             </h3>
             <p className="text-[#F5DEB3] text-sm">
               Listo para dominar el truco
@@ -113,47 +128,58 @@ const PantallaInicio = ({ onIniciarPartida, onContinuarPartida, haySavedGame, on
           CONFIGURAR PARTIDO
         </h1>
       </div>
-      
-      <div className="p-4 space-y-4 max-w-md mx-auto">
-        {/* Team Names */}
-        <div className="bg-[#2a2a2a] rounded-lg p-4 border border-[#D4A574] border-opacity-20">
-          <h2 className="text-md font-bold text-[#D4A574] mb-3 text-center">
-            👥 EQUIPOS
-          </h2>
-          
-          <div className="space-y-3">
-            <div>
-              <label className="block text-[#F5DEB3] text-sm mb-1">Equipo 1:</label>
-              <input
-                type="text"
-                value={configuracion.jugador1}
-                onChange={(e) => setConfiguracion({...configuracion, jugador1: e.target.value})}
-                className="w-full p-2 bg-[#1a1a1a] border border-[#D4A574] border-opacity-30 rounded text-[#F5DEB3] focus:border-[#D4A574] focus:outline-none"
-                maxLength={15}
-                placeholder="Nosotros"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-[#F5DEB3] text-sm mb-1">Equipo 2:</label>
-              <input
-                type="text"
-                value={configuracion.jugador2}
-                onChange={(e) => setConfiguracion({...configuracion, jugador2: e.target.value})}
-                className="w-full p-2 bg-[#1a1a1a] border border-[#D4A574] border-opacity-30 rounded text-[#F5DEB3] focus:border-[#D4A574] focus:outline-none"
-                maxLength={15}
-                placeholder="Ellos"
-              />
+
+      <div className="p-4 space-y-4">
+        {/* Team Selection (Equipos2) or Team Names (Equipos1) */}
+        {FEATURE_FLAGS.USE_TEAM_SELECTION ? (
+          <TeamSelector
+            teamNosotros={teamNosotros}
+            teamEllos={teamEllos}
+            onTeamNosotrosChange={setTeamNosotros}
+            onTeamEllosChange={setTeamEllos}
+            maxPerTeam={3}
+          />
+        ) : (
+          /* Equipos1 - Classic team name inputs */
+          <div className="bg-[#2a2a2a] rounded-lg p-4 border border-[#D4A574] border-opacity-20">
+            <h2 className="text-md font-bold text-[#D4A574] mb-3 text-center">
+              👥 EQUIPOS
+            </h2>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[#F5DEB3] text-sm mb-1">Equipo 1:</label>
+                <input
+                  type="text"
+                  value={configuracion.jugador1}
+                  onChange={(e) => setConfiguracion({...configuracion, jugador1: e.target.value})}
+                  className="w-full p-2 bg-[#1a1a1a] border border-[#D4A574] border-opacity-30 rounded text-[#F5DEB3] focus:border-[#D4A574] focus:outline-none"
+                  maxLength={15}
+                  placeholder="Nosotros"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#F5DEB3] text-sm mb-1">Equipo 2:</label>
+                <input
+                  type="text"
+                  value={configuracion.jugador2}
+                  onChange={(e) => setConfiguracion({...configuracion, jugador2: e.target.value})}
+                  className="w-full p-2 bg-[#1a1a1a] border border-[#D4A574] border-opacity-30 rounded text-[#F5DEB3] focus:border-[#D4A574] focus:outline-none"
+                  maxLength={15}
+                  placeholder="Ellos"
+                />
+              </div>
             </div>
           </div>
-        </div>
-        
+        )}
+
         {/* Points Selection */}
         <div className="bg-[#2a2a2a] rounded-lg p-4 border border-[#D4A574] border-opacity-20">
           <h2 className="text-md font-bold text-[#D4A574] mb-3 text-center">
             🎯 PUNTOS
           </h2>
-          
+
           <div className="grid grid-cols-3 gap-2">
             {[16, 24, 30].map((puntos) => (
               <button
@@ -170,7 +196,7 @@ const PantallaInicio = ({ onIniciarPartida, onContinuarPartida, haySavedGame, on
             ))}
           </div>
         </div>
-        
+
         {/* Action Buttons */}
         <div className="space-y-3">
           <button
@@ -179,7 +205,7 @@ const PantallaInicio = ({ onIniciarPartida, onContinuarPartida, haySavedGame, on
           >
             🚀 EMPEZAR PARTIDO
           </button>
-          
+
           <button
             onClick={() => setShowGameSetup(false)}
             className="w-full py-2 bg-[#1a1a1a] border border-[#D4A574] border-opacity-30 text-[#F5DEB3] font-bold rounded-lg hover:border-opacity-50 transition-all duration-300"

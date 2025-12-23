@@ -355,3 +355,72 @@ COMMENT ON TABLE achievements IS 'Achievement definitions and criteria';
 COMMENT ON TABLE user_achievements IS 'User achievement unlocks and progress';
 COMMENT ON TABLE friendships IS 'Friend relationships between users';
 COMMENT ON TABLE challenges IS 'Game challenges between users';
+
+-- =================================================================
+-- MATCHES TABLE - Team-based game history with player tracking
+-- =================================================================
+CREATE TABLE matches (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+  -- Creator (user who started the match)
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+
+  -- Team configuration (arrays of user IDs)
+  team_nosotros_ids UUID[] DEFAULT '{}',
+  team_ellos_ids UUID[] DEFAULT '{}',
+
+  -- Game configuration
+  total_points INTEGER DEFAULT 30,
+
+  -- Results
+  score_nosotros INTEGER DEFAULT 0,
+  score_ellos INTEGER DEFAULT 0,
+  winner VARCHAR(10),  -- 'nosotros' | 'ellos' | null for ongoing
+
+  -- Metadata
+  notes TEXT,  -- User notes about the match
+  game_data JSONB,  -- History, falta envido moves, etc.
+
+  -- Timestamps
+  started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  finished_at TIMESTAMP WITH TIME ZONE,
+  duration_minutes INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Row Level Security for matches
+ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
+
+-- Users can view matches they participated in or created
+CREATE POLICY "Users can view own matches" ON matches
+  FOR SELECT USING (
+    created_by = (SELECT id FROM users WHERE auth_uid = auth.uid()::TEXT) OR
+    (SELECT id FROM users WHERE auth_uid = auth.uid()::TEXT) = ANY(team_nosotros_ids) OR
+    (SELECT id FROM users WHERE auth_uid = auth.uid()::TEXT) = ANY(team_ellos_ids)
+  );
+
+-- Only creator can insert
+CREATE POLICY "Creator can insert matches" ON matches
+  FOR INSERT WITH CHECK (created_by = (SELECT id FROM users WHERE auth_uid = auth.uid()::TEXT));
+
+-- Only creator can update
+CREATE POLICY "Creator can update matches" ON matches
+  FOR UPDATE USING (created_by = (SELECT id FROM users WHERE auth_uid = auth.uid()::TEXT));
+
+-- Only creator can delete
+CREATE POLICY "Creator can delete matches" ON matches
+  FOR DELETE USING (created_by = (SELECT id FROM users WHERE auth_uid = auth.uid()::TEXT));
+
+-- Indexes for performance
+CREATE INDEX idx_matches_created_by ON matches(created_by);
+CREATE INDEX idx_matches_team_nosotros ON matches USING GIN(team_nosotros_ids);
+CREATE INDEX idx_matches_team_ellos ON matches USING GIN(team_ellos_ids);
+CREATE INDEX idx_matches_finished_at ON matches(finished_at) WHERE finished_at IS NOT NULL;
+CREATE INDEX idx_matches_winner ON matches(winner) WHERE winner IS NOT NULL;
+
+-- Trigger for updated_at
+CREATE TRIGGER update_matches_updated_at BEFORE UPDATE ON matches
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+COMMENT ON TABLE matches IS 'Team-based match history with player tracking';

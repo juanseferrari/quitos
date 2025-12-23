@@ -186,7 +186,7 @@ export const gameReducer = (state, action) => {
     
     case GAME_ACTIONS.NEW_GAME: {
       const { configuracion = {} } = action.payload || {};
-      
+
       return {
         ...state,
         game: {
@@ -196,7 +196,12 @@ export const gameReducer = (state, action) => {
           jugador2: configuracion.jugador2 || state.game.jugador2 || 'Ellos',
           puntosTotales: configuracion.puntosTotales || state.game.puntosTotales || 30,
           fechaInicio: null, // Se setea cuando se suma el primer punto
-          fechaFin: null
+          fechaFin: null,
+          // Team selection (Equipos2)
+          teamNosotros: configuracion.teamNosotros || [],
+          teamEllos: configuracion.teamEllos || [],
+          matchId: configuracion.matchId || null,
+          matchNotes: null
         },
         ui: {
           ...state.ui,
@@ -377,13 +382,46 @@ export const gameReducer = (state, action) => {
     case GAME_ACTIONS.MARK_GAME_RECORDED: {
       return {
         ...state,
-        meta: { 
-          ...state.meta, 
-          gameRecordedInStats: true 
+        meta: {
+          ...state.meta,
+          gameRecordedInStats: true
         }
       };
     }
-    
+
+    case GAME_ACTIONS.SET_MATCH_NOTES: {
+      const { notes } = action.payload;
+
+      return {
+        ...state,
+        game: {
+          ...state.game,
+          matchNotes: notes
+        },
+        meta: {
+          ...state.meta,
+          lastUpdated: Date.now(),
+          needsSync: true
+        }
+      };
+    }
+
+    case GAME_ACTIONS.SET_MATCH_ID: {
+      const { matchId } = action.payload;
+
+      return {
+        ...state,
+        game: {
+          ...state.game,
+          matchId: matchId
+        },
+        meta: {
+          ...state.meta,
+          lastUpdated: Date.now()
+        }
+      };
+    }
+
     // Preparado para Fase 1 - Auth
     case GAME_ACTIONS.SET_USER: {
       const { user } = action.payload;
@@ -504,7 +542,17 @@ export const gameActions = {
     type: GAME_ACTIONS.MARK_GAME_RECORDED,
     payload: { timestamp: Date.now() }
   }),
-  
+
+  setMatchNotes: (notes) => ({
+    type: GAME_ACTIONS.SET_MATCH_NOTES,
+    payload: { notes, timestamp: Date.now() }
+  }),
+
+  setMatchId: (matchId) => ({
+    type: GAME_ACTIONS.SET_MATCH_ID,
+    payload: { matchId, timestamp: Date.now() }
+  }),
+
   setUser: (user) => ({
     type: GAME_ACTIONS.SET_USER,
     payload: { user, timestamp: Date.now() }
