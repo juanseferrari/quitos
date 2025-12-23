@@ -303,22 +303,14 @@ class AuthService {
       }
 
       console.log('📋 getUserProfile: Fetching profile for auth_uid:', targetUserId);
-      console.log('📋 getUserProfile: About to query Supabase...');
 
-      // Add timeout to detect hanging queries
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Query timeout after 10s')), 10000)
-      );
-
-      const queryPromise = this.supabase
+      const { data: profile, error } = await this.supabase
         .from('users')
         .select('*')
         .eq('auth_uid', targetUserId)
         .single();
 
-      const { data: profile, error } = await Promise.race([queryPromise, timeoutPromise]);
-
-      console.log('📋 getUserProfile: Query completed, profile:', profile?.id, 'error:', error);
+      console.log('📋 getUserProfile: Query result - profile:', profile?.id, 'error:', error?.message);
 
       if (error) {
         console.error('🔥 Get profile error:', error);
@@ -489,24 +481,15 @@ class AuthService {
       // Using separate ilike filters instead of .or() which can have syntax issues
       const searchPattern = `%${query}%`;
 
-      console.log('🔍 searchUsers: About to query users table...');
+      console.log('🔍 searchUsers: Querying users table...');
 
-      // First, try a simple query to test connection
-      console.log('🔍 searchUsers: Testing simple query first...');
-      const testQuery = await this.supabase
-        .from('users')
-        .select('id')
-        .limit(1);
-      console.log('🔍 searchUsers: Simple test result:', testQuery.data?.length, 'error:', testQuery.error);
-
-      // Now do the actual search
       const { data, error } = await this.supabase
         .from('users')
         .select('id, display_name, name, avatar_url, email')
         .or(`display_name.ilike.${searchPattern},name.ilike.${searchPattern}`)
         .limit(20);
 
-      console.log('🔍 searchUsers: Query completed, data:', data?.length, 'error:', error);
+      console.log('🔍 searchUsers: Query result - data:', data?.length, 'error:', error?.message);
 
       if (error) {
         console.error('🔥 Error searching users:', error);

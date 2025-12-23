@@ -8,90 +8,77 @@ const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJI
 console.log('🔐 Supabase config:', {
   url: supabaseUrl ? 'configured' : 'missing',
   key: supabaseAnonKey ? 'configured' : 'missing',
-  platform: window.Capacitor ? window.Capacitor.getPlatform() : 'web'
+  platform: typeof window !== 'undefined' && window.Capacitor ? window.Capacitor.getPlatform() : 'web'
 });
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('⚠️ Supabase configuration missing. Using mock services.');
 }
 
-// Storage key para la sesión de Supabase
-const STORAGE_KEY = 'rey-del-truco-auth';
+// Storage key para la sesión de Supabase - use default Supabase key format
+const STORAGE_KEY = `sb-pmymvwpgjacrkbimccao-auth-token`;
 
-// Create Supabase client with session persistence
+// Create Supabase client with simplified configuration
 export const supabase = supabaseUrl && supabaseAnonKey
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: true, // Supabase auto-procesa tokens en URL
+        detectSessionInUrl: true,
         flowType: 'pkce',
-        storageKey: STORAGE_KEY, // Key específica para evitar conflictos
         storage: typeof window !== 'undefined' ? window.localStorage : undefined
+      },
+      db: {
+        schema: 'public'
       },
       global: {
         headers: {
-          'X-Client-Info': window.Capacitor
+          'X-Client-Info': typeof window !== 'undefined' && window.Capacitor
             ? `rey-del-truco-ios/${window.Capacitor.getPlatform()}`
             : 'rey-del-truco-web'
+        },
+        // Add fetch with timeout to prevent hanging requests
+        fetch: (url, options = {}) => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+          return fetch(url, {
+            ...options,
+            signal: controller.signal
+          }).finally(() => clearTimeout(timeoutId));
         }
       }
     })
   : null;
 
-// Debug y migración de sesión: verificar en múltiples keys
+// Debug session on load
 if (typeof window !== 'undefined') {
-  // Keys donde Supabase podría haber guardado la sesión
-  const possibleKeys = [
-    STORAGE_KEY,
-    'sb-pmymvwpgjacrkbimccao-auth-token', // Key default de Supabase (sb-{project-ref}-auth-token)
-    'supabase.auth.token'
-  ];
+  // Check for existing session
+  const sessionKey = STORAGE_KEY;
+  const savedSession = localStorage.getItem(sessionKey);
 
-  let foundSession = null;
-  let foundKey = null;
-
-  for (const key of possibleKeys) {
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      console.log(`🔍 Found session in localStorage key: ${key}`);
-      foundSession = saved;
-      foundKey = key;
-      break;
-    }
-  }
-
-  if (foundSession) {
+  if (savedSession) {
     try {
-      const parsed = JSON.parse(foundSession);
-      console.log('🔍 Session user:', parsed?.user?.email || parsed?.currentSession?.user?.email || 'parsing...');
-
-      // Si la sesión estaba en otra key, migrarla a nuestra key
-      if (foundKey !== STORAGE_KEY) {
-        console.log(`🔄 Migrating session from ${foundKey} to ${STORAGE_KEY}`);
-        localStorage.setItem(STORAGE_KEY, foundSession);
-      }
+      const parsed = JSON.parse(savedSession);
+      console.log('🔍 Found Supabase session for:', parsed?.user?.email || 'unknown');
     } catch (e) {
-      console.log('🔍 Could not parse saved session:', e.message);
+      console.log('🔍 Could not parse saved session');
     }
   } else {
-    console.log('🔍 No Supabase session found in localStorage');
-    // Mostrar todas las keys que empiecen con 'sb-' para debug
-    const sbKeys = Object.keys(localStorage).filter(k => k.startsWith('sb-') || k.includes('supabase'));
-    if (sbKeys.length > 0) {
-      console.log('🔍 Found Supabase-related keys:', sbKeys);
+    console.log('🔍 No Supabase session found');
+    // Check for old keys and migrate if needed
+    const oldKey = 'rey-del-truco-auth';
+    const oldSession = localStorage.getItem(oldKey);
+    if (oldSession) {
+      console.log('🔄 Migrating session from old key');
+      localStorage.setItem(sessionKey, oldSession);
+      localStorage.removeItem(oldKey);
     }
   }
 
-  // PWA Detection: Check if running as installed PWA
-  const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
-               window.navigator.standalone === true ||
-               document.referrer.includes('android-app://');
-  console.log('📱 Running as PWA:', isPWA);
-
-  // Check for OAuth tokens in URL (PWA callback)
+  // Check for OAuth tokens in URL
   if (window.location.hash.includes('access_token') || window.location.search.includes('access_token')) {
-    console.log('🔐 OAuth tokens detected in URL - callback in progress');
+    console.log('🔐 OAuth callback in progress');
   }
 }
 
