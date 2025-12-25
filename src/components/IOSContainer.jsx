@@ -1,19 +1,15 @@
 // components/IOSContainer.jsx - Componente específico para iOS safe areas
 import React from 'react';
-import { useIOSViewport } from '../hooks/useIOSViewport';
 
 const IOSContainer = ({ children, className = '' }) => {
-  const { isIOS } = useIOSViewport();
-
   return (
     <div
-      className={`
-        h-screen-dynamic flex flex-col
-        ${isIOS ? 'ios-safe-container-no-bottom' : 'flex flex-col h-screen'}
-        ${className}
-      `}
+      className={`ios-app-container ${className}`}
       style={{
-        // Don't use overflow: hidden - it clips fixed position children like tab bar
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100dvh',
+        height: '100dvh',
         position: 'relative',
       }}
     >
@@ -25,14 +21,14 @@ const IOSContainer = ({ children, className = '' }) => {
 export const IOSContentArea = ({ children, className = '', noScroll = false }) => {
   return (
     <div
-      className={`
-        ${noScroll ? 'overflow-hidden' : 'overflow-y-auto ios-smooth-scroll overflow-x-hidden'}
-        ${className}
-      `}
+      className={`ios-content-area ${className}`}
       style={{
-        // Use CSS variable for height - accounts for fixed tab bar
-        height: 'var(--content-height)',
-        maxHeight: 'var(--content-height)',
+        flex: 1,
+        overflowY: noScroll ? 'hidden' : 'auto',
+        overflowX: 'hidden',
+        WebkitOverflowScrolling: 'touch',
+        // Leave space for the fixed tab bar at bottom
+        paddingBottom: 'calc(85px + env(safe-area-inset-bottom, 20px))',
       }}
     >
       {children}
@@ -41,19 +37,14 @@ export const IOSContentArea = ({ children, className = '', noScroll = false }) =
 };
 
 export const IOSTabBar = ({ children, className = '' }) => {
-  // ALWAYS visible - removed keyboard detection that was hiding it on some devices
   return (
-    <div
+    <nav
       className={`ios-tab-bar ${className}`}
-      style={{
-        // Force visibility - never hide
-        opacity: 1,
-        visibility: 'visible',
-        display: 'flex',
-      }}
+      role="navigation"
+      aria-label="Main navigation"
     >
       {children}
-    </div>
+    </nav>
   );
 };
 

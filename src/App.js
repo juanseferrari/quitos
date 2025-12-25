@@ -12,7 +12,7 @@ function App() {
       <StatsProvider>
         <GameProvider>
           <IOSOAuthHandler />
-          <div className="App h-screen-dynamic overflow-hidden">
+          <div className="App min-h-screen">
             <AppNavigator />
           </div>
         </GameProvider>
