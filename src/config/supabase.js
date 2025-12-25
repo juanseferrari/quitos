@@ -36,17 +36,8 @@ export const supabase = supabaseUrl && supabaseAnonKey
           'X-Client-Info': typeof window !== 'undefined' && window.Capacitor
             ? `rey-del-truco-ios/${window.Capacitor.getPlatform()}`
             : 'rey-del-truco-web'
-        },
-        // Add fetch with timeout to prevent hanging requests
-        fetch: (url, options = {}) => {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
-
-          return fetch(url, {
-            ...options,
-            signal: controller.signal
-          }).finally(() => clearTimeout(timeoutId));
         }
+        // NOTE: No custom fetch timeout - it was causing OAuth code exchange failures
       }
     })
   : null;

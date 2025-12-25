@@ -8,12 +8,6 @@ const AuthCallbackPage = () => {
   const [debugInfo, setDebugInfo] = useState('Iniciando...');
   const processedRef = useRef(false);
   const timeoutRef = useRef(null);
-  const statusRef = useRef('processing'); // Track status for async checks
-
-  // Keep statusRef in sync
-  useEffect(() => {
-    statusRef.current = status;
-  }, [status]);
 
   useEffect(() => {
     // Evitar procesamiento doble
@@ -21,138 +15,145 @@ const AuthCallbackPage = () => {
     processedRef.current = true;
 
     console.log('🔐 AuthCallbackPage mounted');
-    console.log('📍 URL:', window.location.href);
+    console.log('📍 Full URL:', window.location.href);
     console.log('📍 Hash:', window.location.hash);
     console.log('📍 Search:', window.location.search);
 
-    // Check for errors in URL first
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const queryParams = new URLSearchParams(window.location.search);
+
+    // Check for errors in URL first
     const errorParam = hashParams.get('error') || queryParams.get('error');
     const errorDescription = hashParams.get('error_description') || queryParams.get('error_description');
 
     if (errorParam) {
       console.error('🔥 OAuth error from provider:', errorParam, errorDescription);
-      setError(errorDescription || errorParam);
+      setError(decodeURIComponent(errorDescription || errorParam));
       setStatus('error');
       return;
     }
 
-    // Set up auth state listener - this is the KEY change
-    // Instead of polling, we listen for the auth state change event
-    // which Supabase emits after processing the code
-    setDebugInfo('Esperando autenticación de Supabase...');
+    // Check what we have in the URL
+    const code = queryParams.get('code');
+    const accessToken = hashParams.get('access_token');
 
+    console.log('🔑 URL contains:', { hasCode: !!code, hasAccessToken: !!accessToken });
+
+    const processAuth = async () => {
+      try {
+        // If we have a code, we need to exchange it for a session
+        if (code) {
+          console.log('🔄 Exchanging authorization code for session...');
+          setDebugInfo('Intercambiando código por sesión...');
+
+          // Supabase should auto-exchange with detectSessionInUrl: true
+          // But let's also manually try if needed
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+          if (exchangeError) {
+            console.error('🔥 Code exchange error:', exchangeError);
+            // Don't fail immediately - the listener might still work
+            setDebugInfo('Verificando sesión...');
+          } else if (data.session) {
+            console.log('✅ Code exchanged successfully!', data.session.user?.email);
+            handleSuccess(data.session);
+            return;
+          }
+        }
+
+        // If we have an access token in hash (implicit flow)
+        if (accessToken) {
+          console.log('🔑 Access token found in URL hash');
+          setDebugInfo('Estableciendo sesión...');
+          // Supabase should handle this automatically
+        }
+
+        // Wait for Supabase to process and check session
+        setDebugInfo('Verificando sesión...');
+        await checkSessionWithRetry();
+
+      } catch (err) {
+        console.error('🔥 Auth processing error:', err);
+        setError(err.message);
+        setStatus('error');
+      }
+    };
+
+    const checkSessionWithRetry = async (attempts = 0) => {
+      const maxAttempts = 5;
+      const delay = 1000; // 1 second between attempts
+
+      console.log(`🔍 Checking session (attempt ${attempts + 1}/${maxAttempts})...`);
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error('🔥 Session check error:', sessionError);
+      }
+
+      if (session?.user) {
+        console.log('✅ Session found!', session.user.email);
+        handleSuccess(session);
+        return;
+      }
+
+      if (attempts < maxAttempts - 1) {
+        console.log(`⏳ No session yet, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return checkSessionWithRetry(attempts + 1);
+      }
+
+      // All attempts failed
+      console.log('❌ No session after all attempts');
+      setStatus('timeout');
+      setDebugInfo('No se pudo establecer la sesión');
+
+      // Redirect to home after delay
+      setTimeout(() => {
+        window.history.replaceState({}, document.title, '/');
+        window.location.replace('/');
+      }, 2000);
+    };
+
+    const handleSuccess = (session) => {
+      console.log('🎉 Authentication successful!', session.user.email);
+      localStorage.setItem('trucoapp_had_auth', 'true');
+      setStatus('success');
+
+      // Clean URL and redirect
+      setTimeout(() => {
+        console.log('🔄 Redirecting to home...');
+        window.history.replaceState({}, document.title, '/');
+        window.location.replace('/');
+      }, 1500);
+    };
+
+    // Also listen for auth state changes as backup
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('🔐 AuthCallbackPage received auth event:', event, session?.user?.email || 'no user');
+      console.log('🔐 Auth state change:', event, session?.user?.email || 'no user');
 
-      if (event === 'SIGNED_IN' && session?.user) {
-        console.log('✅ SIGNED_IN event received!', session.user.email);
-        clearTimeout(timeoutRef.current);
-        localStorage.setItem('trucoapp_had_auth', 'true');
-        statusRef.current = 'success';
-        setStatus('success');
-
-        // Clean URL and redirect
-        setTimeout(() => {
-          console.log('🔄 Redirecting to home...');
-          window.history.replaceState({}, document.title, '/');
-          window.location.replace('/');
-        }, 1000);
-      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        console.log('✅ TOKEN_REFRESHED event with session!', session.user.email);
-        clearTimeout(timeoutRef.current);
-        localStorage.setItem('trucoapp_had_auth', 'true');
-        statusRef.current = 'success';
-        setStatus('success');
-
-        setTimeout(() => {
-          window.history.replaceState({}, document.title, '/');
-          window.location.replace('/');
-        }, 1000);
-      } else if (event === 'INITIAL_SESSION') {
-        // Check if there's already a session
-        if (session?.user) {
-          console.log('✅ INITIAL_SESSION has user!', session.user.email);
-          clearTimeout(timeoutRef.current);
-          localStorage.setItem('trucoapp_had_auth', 'true');
-          statusRef.current = 'success';
-          setStatus('success');
-
-          setTimeout(() => {
-            window.history.replaceState({}, document.title, '/');
-            window.location.replace('/');
-          }, 1000);
-        } else {
-          console.log('ℹ️ INITIAL_SESSION without user, waiting for SIGNED_IN...');
-          setDebugInfo('Procesando código de autorización...');
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+        if (status === 'processing') {
+          handleSuccess(session);
         }
       }
     });
 
-    // Also check if we have a code to exchange (PKCE flow)
-    const code = queryParams.get('code');
-    if (code) {
-      console.log('🔑 Found authorization code, Supabase should auto-exchange it...');
-      setDebugInfo('Intercambiando código por sesión...');
-    }
+    // Start processing
+    processAuth();
 
-    // IMPORTANT: Check if session was already established before listener was set up
-    // This handles the race condition where Supabase processes the code before
-    // our listener is ready
-    const checkExistingSession = async () => {
-      // Small delay to let Supabase finish processing
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const { data: { session }, error } = await supabase.auth.getSession();
-      console.log('🔍 Initial session check:', session?.user?.email || 'no session', error?.message || 'no error');
-
-      if (session?.user && statusRef.current === 'processing') {
-        console.log('✅ Session already exists!', session.user.email);
-        clearTimeout(timeoutRef.current);
-        localStorage.setItem('trucoapp_had_auth', 'true');
-        statusRef.current = 'success';
-        setStatus('success');
-
+    // Safety timeout - 30 seconds max
+    timeoutRef.current = setTimeout(() => {
+      if (status === 'processing') {
+        console.log('⏱️ Safety timeout reached');
+        setStatus('timeout');
+        setDebugInfo('Tiempo agotado');
         setTimeout(() => {
           window.history.replaceState({}, document.title, '/');
           window.location.replace('/');
-        }, 1000);
+        }, 2000);
       }
-    };
-
-    checkExistingSession();
-
-    // Set a timeout for safety - if nothing happens in 15 seconds, redirect anyway
-    timeoutRef.current = setTimeout(() => {
-      console.log('⏱️ Timeout reached, checking final session state...');
-
-      // One final check
-      supabase.auth.getSession().then(({ data: { session }, error }) => {
-        if (error) {
-          console.error('🔥 Final session check error:', error);
-          setError('Error al verificar sesión');
-          setStatus('error');
-        } else if (session?.user) {
-          console.log('✅ Found session on timeout check!', session.user.email);
-          localStorage.setItem('trucoapp_had_auth', 'true');
-          setStatus('success');
-          setTimeout(() => {
-            window.history.replaceState({}, document.title, '/');
-            window.location.replace('/');
-          }, 500);
-        } else {
-          console.log('⚠️ No session found after timeout');
-          setDebugInfo('No se pudo establecer sesión');
-          setStatus('timeout');
-          // Redirect to home after short delay
-          setTimeout(() => {
-            window.history.replaceState({}, document.title, '/');
-            window.location.replace('/');
-          }, 2000);
-        }
-      });
-    }, 15000); // 15 second timeout
+    }, 30000);
 
     // Cleanup
     return () => {
@@ -160,7 +161,7 @@ const AuthCallbackPage = () => {
       clearTimeout(timeoutRef.current);
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [status]);
 
   const handleRetry = () => {
     window.history.replaceState({}, document.title, '/');
