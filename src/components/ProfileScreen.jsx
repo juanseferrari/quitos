@@ -25,11 +25,14 @@ const ProfileScreen = () => {
   const [friendsLoading, setFriendsLoading] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
 
-  // Load user profile on mount
+  // Load user profile on mount - force refresh to get latest data from DB
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const profile = await authService.getUserProfile();
+        console.log('📋 ProfileScreen: Loading user profile...');
+        // Force refresh to ensure we get the latest data including display_name
+        const profile = await authService.getUserProfile(null, true);
+        console.log('📋 ProfileScreen: Got profile:', profile?.id, 'display_name:', profile?.display_name);
         if (profile) {
           setUserProfile(profile);
           setNewUsername(profile.display_name || '');

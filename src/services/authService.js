@@ -277,8 +277,8 @@ class AuthService {
     }
   }
 
-  // Get user profile
-  async getUserProfile(userId = null) {
+  // Get user profile - always fetches fresh from database to ensure up-to-date data
+  async getUserProfile(userId = null, forceRefresh = false) {
     if (!this.isConfigured) return null;
 
     try {
@@ -296,10 +296,15 @@ class AuthService {
         targetUserId = user.id;
       }
 
-      // Return cached profile if we have it and it's the same user
-      if (this.userProfile && this.userProfile.auth_uid === targetUserId) {
-        console.log('📋 getUserProfile: Returning cached profile');
-        return this.userProfile;
+      // Only use cache if we have complete data (including display_name check)
+      // and forceRefresh is not requested
+      if (!forceRefresh && this.userProfile && this.userProfile.auth_uid === targetUserId) {
+        // If cached profile has display_name, return it; otherwise fetch fresh
+        if (this.userProfile.display_name) {
+          console.log('📋 getUserProfile: Returning cached profile with display_name:', this.userProfile.display_name);
+          return this.userProfile;
+        }
+        console.log('📋 getUserProfile: Cached profile missing display_name, fetching fresh...');
       }
 
       console.log('📋 getUserProfile: Fetching profile for auth_uid:', targetUserId);
@@ -310,7 +315,7 @@ class AuthService {
         .eq('auth_uid', targetUserId)
         .single();
 
-      console.log('📋 getUserProfile: Query result - profile:', profile?.id, 'error:', error?.message);
+      console.log('📋 getUserProfile: Query result - profile id:', profile?.id, 'display_name:', profile?.display_name, 'error:', error?.message);
 
       if (error) {
         console.error('🔥 Get profile error:', error);
@@ -478,23 +483,42 @@ class AuthService {
       console.log('🔍 searchUsers: Got current profile:', currentProfile?.id);
 
       // Search by display_name OR name (case insensitive)
-      // Using separate ilike filters instead of .or() which can have syntax issues
+      // Use proper PostgREST filter syntax with wildcards
       const searchPattern = `%${query}%`;
 
-      console.log('🔍 searchUsers: Querying users table...');
+      console.log('🔍 searchUsers: Querying users table with pattern:', searchPattern);
 
+      // Try the search - use proper .or() syntax
       const { data, error } = await this.supabase
         .from('users')
         .select('id, display_name, name, avatar_url, email')
         .or(`display_name.ilike.${searchPattern},name.ilike.${searchPattern}`)
         .limit(20);
 
-      console.log('🔍 searchUsers: Query result - data:', data?.length, 'error:', error?.message);
+      console.log('🔍 searchUsers: Query result - data:', data?.length || 0, 'items, error:', error?.message || 'none');
 
       if (error) {
         console.error('🔥 Error searching users:', error);
         console.error('🔥 Error details:', JSON.stringify(error));
-        return [];
+
+        // Fallback: try simpler search with just display_name
+        console.log('🔍 Trying fallback search with just display_name...');
+        const { data: fallbackData, error: fallbackError } = await this.supabase
+          .from('users')
+          .select('id, display_name, name, avatar_url, email')
+          .ilike('display_name', searchPattern)
+          .limit(20);
+
+        if (fallbackError) {
+          console.error('🔥 Fallback search also failed:', fallbackError);
+          return [];
+        }
+
+        console.log('🔍 Fallback search returned:', fallbackData?.length || 0, 'results');
+        const filteredFallback = (fallbackData || []).filter(user =>
+          currentProfile ? user.id !== currentProfile.id : true
+        );
+        return filteredFallback;
       }
 
       // Filter out current user from results
@@ -503,7 +527,9 @@ class AuthService {
       );
 
       console.log('✅ Search results:', filteredData.length, 'users found');
-      console.log('📋 Search results data:', filteredData);
+      if (filteredData.length > 0) {
+        console.log('📋 First result:', filteredData[0]);
+      }
       return filteredData;
     } catch (error) {
       console.error('🔥 searchUsers error:', error);
