@@ -99,18 +99,18 @@ const AuthRequiredScreen = ({ onShowAuth, screen }) => {
           {screen} Premium
         </h2>
         <p className="text-[#F5DEB3] mb-6 leading-relaxed">
-          Para acceder a {screen.toLowerCase()}, necesitás crear una cuenta y desbloquear 
+          Para acceder a {screen.toLowerCase()}, necesitás iniciar sesión y desbloquear
           todas las funciones del Rey del Truco.
         </p>
-        
+
         <div className="space-y-3">
           <button
             onClick={onShowAuth}
             className="w-full py-3 bg-gradient-to-r from-[#D4A574] to-[#C59660] text-[#0a0a0a] font-bold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
           >
-            👑 CREAR CUENTA
+            👑 INICIAR SESIÓN
           </button>
-          
+
           <p className="text-xs text-[#F5DEB3] opacity-60">
             • Estadísticas ilimitadas<br/>
             • Rankings y competencia<br/>

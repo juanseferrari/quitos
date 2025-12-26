@@ -13,11 +13,17 @@ export const AuthSelectionScreen = ({ onContinueAnonymous }) => {
   const [localError, setLocalError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     try {
       setLocalError('');
       console.log('🔐 Iniciando Google OAuth...');
-      await signInWithGoogle();
+      const result = await signInWithGoogle();
+      console.log('🔐 Google OAuth result:', result);
     } catch (error) {
       console.error('🔥 Error en Google sign in:', error);
       setLocalError(error.message);
@@ -76,8 +82,9 @@ export const AuthSelectionScreen = ({ onContinueAnonymous }) => {
               <div className="auth-buttons space-y-4 mb-6">
                 {/* Google Button - Styled to match app theme */}
                 <button
+                  type="button"
                   className="auth-button google-button w-full p-4 rounded-lg bg-gradient-to-r from-[#D4A574] to-[#C59660] text-[#0a0a0a] font-semibold flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:from-[#E6C589] hover:to-[#D4A574] border border-[#D4A574]"
-                  onClick={handleGoogleSignIn}
+                  onClick={(e) => handleGoogleSignIn(e)}
                   disabled={isLoading}
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -91,8 +98,13 @@ export const AuthSelectionScreen = ({ onContinueAnonymous }) => {
 
                 {/* Email Button */}
                 <button
+                  type="button"
                   className="auth-button email-button w-full p-4 rounded-lg bg-transparent border-2 border-[#D4A574] text-[#D4A574] font-semibold flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-[#D4A574] hover:bg-opacity-10"
-                  onClick={() => setShowEmailForm(true)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowEmailForm(true);
+                  }}
                   disabled={isLoading}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
