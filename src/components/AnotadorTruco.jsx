@@ -74,7 +74,7 @@ const AnotadorTruco = ({ onShowAuth }) => {
     meta
   } = useGame();
   
-  const { recordGameFinished } = useStats();
+  const { recordGameFinished, updateMatchNotes } = useStats();
   
   // Hook de persistencia
   const { hasSavedGame } = useGamePersistence();
@@ -93,33 +93,24 @@ const AnotadorTruco = ({ onShowAuth }) => {
   const hasTeamData = FEATURE_FLAGS.USE_TEAM_SELECTION &&
     (teamNosotros.length > 0 || teamEllos.length > 0);
 
-  // Function to save match to Supabase (for Equipos2 mode)
-  const saveMatchToSupabase = async (notes = '') => {
-    if (!matchId || !hasTeamData) {
-      console.log('⏭️ Skipping Supabase save - no matchId or team data');
+  // Function to update match notes in Supabase
+  const saveMatchNotesToSupabase = async (notes = '') => {
+    if (!matchId) {
+      console.log('⏭️ Skipping notes update - no matchId');
       return;
     }
 
     try {
-      const winner = ganador === 'nos' ? 'nosotros' : 'ellos';
-      const startTime = meta.lastUpdated ? new Date(meta.lastUpdated - (historial.length * 60000)) : new Date();
-      const durationMinutes = Math.round((Date.now() - startTime.getTime()) / 60000);
+      console.log('📝 Actualizando notas del match:', matchId, 'con notas:', notes);
+      const result = await updateMatchNotes(matchId, notes);
 
-      await matchService.finishMatch(matchId, {
-        score_nosotros: puntosNos,
-        score_ellos: puntosEllos,
-        winner,
-        notes: notes || null,
-        game_data: {
-          historial,
-          puntosTotales
-        },
-        duration_minutes: durationMinutes
-      });
-
-      console.log('✅ Match saved to Supabase');
+      if (result.success) {
+        console.log('✅ Notas del match actualizadas exitosamente');
+      } else {
+        console.warn('⚠️ No se pudieron actualizar las notas:', result.reason);
+      }
     } catch (error) {
-      console.error('❌ Error saving match to Supabase:', error);
+      console.error('❌ Error updating match notes:', error);
     }
   };
 
@@ -358,10 +349,9 @@ const AnotadorTruco = ({ onShowAuth }) => {
                   console.log('🚀 OTRA VUELTA - Respuesta inmediata');
                   recordStatsInBackground();
 
-                  // Save match notes if in Equipos2 mode
-                  if (hasTeamData) {
-                    setMatchNotes(notesInput);
-                    await saveMatchToSupabase(notesInput);
+                  // Save match notes
+                  if (notesInput && notesInput.trim()) {
+                    await saveMatchNotesToSupabase(notesInput);
                   }
 
                   // Pequeño delay para permitir que se procesen las stats
@@ -380,10 +370,9 @@ const AnotadorTruco = ({ onShowAuth }) => {
                   console.log('🚀 FINALIZAR - Respuesta inmediata');
                   recordStatsInBackground();
 
-                  // Save match notes if in Equipos2 mode
-                  if (hasTeamData) {
-                    setMatchNotes(notesInput);
-                    await saveMatchToSupabase(notesInput);
+                  // Save match notes
+                  if (notesInput && notesInput.trim()) {
+                    await saveMatchNotesToSupabase(notesInput);
                   }
 
                   // Pequeño delay para permitir que se procesen las stats

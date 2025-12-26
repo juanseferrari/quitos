@@ -67,8 +67,8 @@ html, body {
   /* Unified viewport system - Single source of truth */
   --app-height: 100dvh;
   --safe-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-  --tab-bar-height: 85px; /* Base tab bar height - INCREASED */
-  --tab-bar-total-height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 35px) + 10px); /* Tab bar + safe area + extra padding */
+  --tab-bar-height: 70px; /* Base tab bar height - optimized for iPhone 15 */
+  --tab-bar-total-height: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px)); /* Tab bar + safe area only */
   --content-height: calc(100dvh - env(safe-area-inset-top) - var(--tab-bar-total-height));
   --game-content-height: calc(var(--content-height) - 20px); /* Extra space for controls */
   
@@ -224,7 +224,7 @@ html, body {
 
   /* Padding with safe area support */
   padding: 8px 16px;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 12px);
 
   /* Visual styling */
   background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
@@ -254,15 +254,15 @@ nav.ios-tab-bar {
 /* iOS Safari specific - account for browser chrome */
 @supports (-webkit-touch-callout: none) {
   .ios-tab-bar {
-    /* Extra padding for iOS Safari's bottom bar */
-    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    /* Minimal extra padding for iOS Safari's bottom bar */
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 12px));
   }
 }
 
 /* PWA/Standalone mode - less padding needed */
 @media (display-mode: standalone) {
   .ios-tab-bar {
-    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 12px));
   }
 }
 
@@ -271,7 +271,7 @@ nav.ios-tab-bar {
   .ios-tab-bar {
     min-height: 60px;
     padding: 6px 12px;
-    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 12px));
   }
 }
 

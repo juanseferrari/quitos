@@ -39,7 +39,7 @@ export const useGame = () => {
         puntos: `${puntosNos}-${puntosEllos}`,
         gameRecordedInStats: meta.gameRecordedInStats
       });
-      
+
       // Preparar datos del juego para estadísticas
       const gameData = {
         puntosNos,
@@ -50,18 +50,32 @@ export const useGame = () => {
         puntosTotales: game.puntosTotales,
         fechaInicio: game.fechaInicio,
         fechaFin: Date.now(),
-        historial: game.historial
+        historial: game.historial,
+        notas: null, // Campo para notas del partido
+        // Team IDs (Equipos2 mode)
+        teamNosotros: game.teamNosotros || [],
+        teamEllos: game.teamEllos || []
       };
-      
+
+      console.log('🔍 [useGame] gameData preparado:', JSON.stringify(gameData, null, 2));
+
       // Marcar inmediatamente como registrado para evitar loops
       dispatch(actions.markGameRecorded());
-      
+
+      console.log('🔍 [useGame] Calling recordGameFinished...');
       // Registrar en estadísticas
       recordGameFinished(gameData).then((result) => {
         console.log('✅ Juego registrado exitosamente en estadísticas!', {
           success: !!result,
-          insights: result?.insights?.length || 0
+          insights: result?.insights?.length || 0,
+          matchId: result?.matchId
         });
+
+        // Save matchId to game state for updating notes later
+        if (result?.matchId) {
+          console.log('💾 Guardando matchId en el estado del juego:', result.matchId);
+          dispatch(actions.setMatchId(result.matchId));
+        }
       }).catch(error => {
         console.error('❌ Error registering game in stats:', error);
         // Si falla, desmarcar para permitir reintento

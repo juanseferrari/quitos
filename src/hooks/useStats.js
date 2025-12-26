@@ -39,46 +39,57 @@ export const useStats = () => {
   
   // Función simplificada para registrar un juego terminado
   const recordGameFinished = async (gameData) => {
+    console.log('🎮 [recordGameFinished] CALLED with gameData:', JSON.stringify(gameData, null, 2));
+
     if (!gameData || !gameData.ganador) {
       console.warn('📊 Datos del juego incompletos, no se pueden calcular estadísticas');
       return null;
     }
-    
+
     try {
       console.log('📊 Calculando estadísticas para:', {
         ganador: gameData.ganador,
         puntos: `${gameData.puntosNos}-${gameData.puntosEllos}`,
         isAuthenticated
       });
-      
-      // TEMPORALMENTE DESHABILITADO - Priorizar estadísticas sobre guardado en nube
-      console.log('⚠️ Guardado en Supabase temporalmente deshabilitado para debug');
-      
+
+      console.log('🔍 [recordGameFinished] canUseCloudFeatures:', gameDataService.canUseCloudFeatures());
+
       // Si está autenticado, guardar en Supabase (no bloquear si falla)
-      // if (isAuthenticated && gameDataService.canUseCloudFeatures()) {
-      //   console.log('☁️ Guardando juego en la nube...');
-      //   try {
-      //     const saveResult = await gameDataService.saveGame(gameData);
-      //     if (saveResult.success) {
-      //       console.log('✅ Juego guardado en Supabase:', saveResult.gameId);
-      //     } else {
-      //       console.warn('⚠️ No se pudo guardar en la nube:', saveResult.reason);
-      //     }
-      //   } catch (cloudError) {
-      //     console.error('❌ Error guardando en la nube (continuando con stats):', cloudError);
-      //   }
-      // }
+      let savedMatchId = null;
+      if (isAuthenticated && gameDataService.canUseCloudFeatures()) {
+        console.log('☁️ Guardando juego en la nube...');
+        console.log('☁️ About to call gameDataService.saveGame()');
+        try {
+          const saveResult = await gameDataService.saveGame(gameData);
+          console.log('☁️ saveResult returned:', JSON.stringify(saveResult, null, 2));
+          if (saveResult.success) {
+            console.log('✅ Juego guardado en Supabase:', saveResult.gameId);
+            savedMatchId = saveResult.matchId;
+          } else {
+            console.warn('⚠️ No se pudo guardar en la nube:', saveResult.reason);
+          }
+        } catch (cloudError) {
+          console.error('❌ Error guardando en la nube (continuando con stats):', cloudError);
+        }
+      } else {
+        console.log('⚠️ Skipping cloud save - isAuthenticated:', isAuthenticated, 'canUseCloudFeatures:', gameDataService.canUseCloudFeatures());
+      }
       
       console.log('📊 Llamando a updateStatsWithGame...');
       const result = await updateStatsWithGame(gameData);
       console.log('📊 updateStatsWithGame completado, resultado:', result);
-      
+
       console.log('📊 Estadísticas actualizadas:', {
         gamesPlayed: result?.userStats?.games_played || 0,
         insights: result?.insights?.length || 0
       });
-      
-      return result;
+
+      // Return result with matchId for updating notes later
+      return {
+        ...result,
+        matchId: savedMatchId
+      };
     } catch (error) {
       console.error('📊 Error calculando estadísticas:', error);
       return null;
@@ -189,6 +200,22 @@ export const useStats = () => {
     };
   };
   
+  // Update match notes
+  const updateMatchNotes = async (matchId, notas) => {
+    if (!isAuthenticated || !gameDataService.canUseCloudFeatures()) {
+      console.log('⚠️ Cannot update match notes - not authenticated or cloud features disabled');
+      return { success: false, reason: 'not_authenticated' };
+    }
+
+    try {
+      const result = await gameDataService.updateMatchNotes(matchId, notas);
+      return result;
+    } catch (error) {
+      console.error('❌ Error updating match notes:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
   return {
     // Estado básico
     userStats,
@@ -197,31 +224,32 @@ export const useStats = () => {
     insights,
     rivalries,
     temporalAggregations,
-    
+
     // Estados de la app
     isLoading,
     isCalculating,
     isSyncing,
     error,
     needsCalculation,
-    
+
     // Acciones principales
     recordGameFinished,
+    updateMatchNotes,
     loadRankings,
     loadRivalryStats,
     loadInsights,
     syncStatsWithBackend,
-    
+
     // Utilidades de datos
     getPerformanceStats,
     getRivalry,
     getProgressSummary,
     getTrucoInsights,
-    
+
     // Utilidades de UI
     shouldShowInsights,
     getTopInsight,
-    
+
     // Estados derivados
     isStatsAvailable,
     hasRecentStats,

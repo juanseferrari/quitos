@@ -25,6 +25,11 @@ const ProfileScreen = () => {
   const [friendsLoading, setFriendsLoading] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
 
+  // Modal state for success/error messages
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
+  const [modalType, setModalType] = useState('success'); // 'success' or 'error'
+
   // Load user profile on mount - force refresh to get latest data from DB
   useEffect(() => {
     const loadProfile = async () => {
@@ -173,9 +178,17 @@ const ProfileScreen = () => {
       // Remove from search results
       setSearchResults(prev => prev.filter(u => u.id !== userId));
       setSearchQuery('');
+      // Show success modal
+      setModalType('success');
+      setModalMessage('Solicitud enviada exitosamente');
+      setShowModal(true);
+      setTimeout(() => setShowModal(false), 3000);
     } catch (error) {
       console.error('Error sending friend request:', error);
-      alert(error.message);
+      // Show error modal
+      setModalType('error');
+      setModalMessage(error.message || 'Error al enviar solicitud');
+      setShowModal(true);
     }
   };
 
@@ -596,6 +609,51 @@ const ProfileScreen = () => {
         </div>
         </div>
       </div>
+
+      {/* Success/Error Modal */}
+      {showModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
+            onClick={() => setShowModal(false)}
+          />
+
+          {/* Modal Content */}
+          <div className="relative bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] rounded-2xl p-6 max-w-sm w-full border border-[#D4A574] border-opacity-30 shadow-2xl">
+            {/* Icon */}
+            <div className="text-center mb-4">
+              <div className={`text-6xl ${modalType === 'success' ? 'animate-bounce' : 'animate-pulse'}`}>
+                {modalType === 'success' ? '✅' : '❌'}
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className={`text-xl font-bold text-center mb-2 ${
+              modalType === 'success' ? 'text-green-400' : 'text-red-400'
+            }`}>
+              {modalType === 'success' ? 'Éxito' : 'Error'}
+            </h3>
+
+            {/* Message */}
+            <p className="text-[#F5DEB3] text-center mb-6 leading-relaxed">
+              {modalMessage}
+            </p>
+
+            {/* Close Button */}
+            <button
+              onClick={() => setShowModal(false)}
+              className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 ${
+                modalType === 'success'
+                  ? 'bg-green-600 hover:bg-green-500 text-white'
+                  : 'bg-red-600 hover:bg-red-500 text-white'
+              }`}
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      )}
     </ScreenContainer>
   );
 };
