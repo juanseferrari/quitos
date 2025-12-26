@@ -4,9 +4,10 @@ import { useAuth } from '../hooks/useAuth';
 import authService from '../services/authService';
 import ScreenContainer from './ScreenContainer';
 import { APP_NAME, APP_VERSION } from '../config/version';
+import AuthButtons from './AuthButtons';
 
 const ProfileScreen = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAuthenticated } = useAuth();
 
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState('');
@@ -256,6 +257,67 @@ const ProfileScreen = () => {
       </div>
     );
   };
+
+  // Si el usuario no está autenticado, mostrar botones de login
+  if (!isAuthenticated) {
+    return (
+      <ScreenContainer noScroll={true}>
+        <div className="flex flex-col h-full overflow-hidden">
+          {/* Header - Fixed */}
+          <div className="flex-shrink-0 bg-[#0a0a0a] border-b border-[#D4A574] border-opacity-30 px-4 py-3">
+            <h1 className="text-xl font-bold text-[#D4A574] text-center">
+              MI PERFIL
+            </h1>
+          </div>
+
+          {/* Scrollable content area with auth buttons */}
+          <div className="flex-1 overflow-y-auto p-4 flex items-center justify-center" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div className="w-full max-w-md">
+              <div className="text-center mb-6">
+                <p className="text-[#F5DEB3] text-lg mb-2">
+                  Iniciá sesión para ver tu perfil
+                </p>
+                <p className="text-[#F5DEB3] text-sm opacity-70">
+                  Accedé a tus estadísticas, amigos y más
+                </p>
+              </div>
+
+              <AuthButtons showAnonymousOption={false} />
+
+              {/* Footer con links legales */}
+              <div className="pt-6 text-center">
+                <p className="text-[#F5DEB3] text-[10px] opacity-40">
+                  <a
+                    href="/privacy"
+                    className="hover:opacity-70 transition-opacity"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.history.pushState({}, '', '/privacy');
+                      window.location.reload();
+                    }}
+                  >
+                    Privacidad
+                  </a>
+                  {' · '}
+                  <a
+                    href="/terms"
+                    className="hover:opacity-70 transition-opacity"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.history.pushState({}, '', '/terms');
+                      window.location.reload();
+                    }}
+                  >
+                    Términos
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer noScroll={true}>

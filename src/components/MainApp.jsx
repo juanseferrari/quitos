@@ -36,7 +36,7 @@ const MainApp = ({ onShowAuth }) => {
       case 'social':
         return isAuthenticated ? <SocialScreen /> : <AuthRequiredScreen onShowAuth={onShowAuth} screen="Social" />;
       case 'profile':
-        return isAuthenticated ? <ProfileScreen /> : <AuthRequiredScreen onShowAuth={onShowAuth} screen="Perfil" />;
+        return <ProfileScreen />;
       default:
         return <HomeScreen onNavigateToPlay={() => setActiveTab('play')} onShowAuth={onShowAuth} />;
     }
