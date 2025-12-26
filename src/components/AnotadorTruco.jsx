@@ -140,7 +140,7 @@ const AnotadorTruco = ({ onShowAuth }) => {
       <div className="h-full w-full flex flex-col rey-premium-container-mobile-optimized">
 
         {/* FILA 1: Headers con nombres y puntaje numérico (~12%) */}
-        <div className="flex w-full" style={{ height: '12%', minHeight: '60px' }}>
+        <div className="flex w-full" style={{ paddingTop: '2%', height: '15%', minHeight: '60px' }}>
           {/* Header Jugador 1 */}
           <div className="flex-1 flex flex-col items-center justify-center">
             <input
