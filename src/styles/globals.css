@@ -224,7 +224,7 @@ html, body {
 
   /* Padding with safe area support */
   padding: 8px 16px;
-  padding-bottom: env(safe-area-inset-bottom, 12px);
+  padding-bottom: 4%;
 
   /* Visual styling */
   background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
@@ -255,14 +255,14 @@ nav.ios-tab-bar {
 @supports (-webkit-touch-callout: none) {
   .ios-tab-bar {
     /* Minimal extra padding for iOS Safari's bottom bar */
-    padding-bottom: calc(8px + env(safe-area-inset-bottom, 12px));
+    padding-bottom: 4%;
   }
 }
 
 /* PWA/Standalone mode - less padding needed */
 @media (display-mode: standalone) {
   .ios-tab-bar {
-    padding-bottom: calc(6px + env(safe-area-inset-bottom, 12px));
+    padding-bottom: 4%;
   }
 }
 
@@ -271,7 +271,7 @@ nav.ios-tab-bar {
   .ios-tab-bar {
     min-height: 60px;
     padding: 6px 12px;
-    padding-bottom: calc(6px + env(safe-area-inset-bottom, 12px));
+    padding-bottom: 4%;
   }
 }
 
