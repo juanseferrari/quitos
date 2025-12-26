@@ -106,31 +106,117 @@ class AuthService {
 
   // Handle Web OAuth (standard flow)
   async _handleWebOAuth() {
-    const redirectUrl = window.location.hostname === 'localhost' 
+    // Detect if running as installed PWA (standalone mode)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                        window.navigator.standalone ||
+                        document.referrer.includes('android-app://');
+
+    console.log('🔐 PWA Detection:', {
+      isStandalone,
+      displayMode: window.matchMedia('(display-mode: standalone)').matches,
+      iosStandalone: window.navigator.standalone,
+      referrer: document.referrer
+    });
+
+    const redirectUrl = window.location.hostname === 'localhost'
       ? 'http://localhost:3000'
       : `${window.location.origin}`;
-      
+
     console.log('🔐 Starting web OAuth with redirect:', redirectUrl);
 
     // Check if user has been authenticated before
     const hasBeenAuthenticated = localStorage.getItem('trucoapp_had_auth') === 'true';
     const promptType = hasBeenAuthenticated ? 'select_account' : 'consent';
-    
+
     console.log('🔐 OAuth prompt type:', promptType);
 
-    const { data, error } = await this.supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl,
-        queryParams: {
-          access_type: 'offline',
-          prompt: promptType,
-        }
-      }
-    });
+    // CRITICAL PWA FIX: Use skipBrowserRedirect + popup in standalone mode
+    // to avoid breaking out of PWA context
+    if (isStandalone) {
+      console.log('🔐 PWA STANDALONE MODE: Using popup flow instead of redirect');
 
-    if (error) throw error;
-    return { success: true, data };
+      const { data, error } = await this.supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: true, // Get URL manually
+          queryParams: {
+            access_type: 'offline',
+            prompt: promptType,
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.url) {
+        // Open in popup window to stay in PWA context
+        console.log('🔐 Opening OAuth in popup window');
+        const width = 500;
+        const height = 600;
+        const left = (window.screen.width / 2) - (width / 2);
+        const top = (window.screen.height / 2) - (height / 2);
+
+        const popup = window.open(
+          data.url,
+          'oauth_popup',
+          `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
+        );
+
+        // Monitor popup for closure and check session
+        return new Promise((resolve, reject) => {
+          const checkPopup = setInterval(async () => {
+            if (popup && popup.closed) {
+              clearInterval(checkPopup);
+              console.log('🔐 Popup closed, checking for session...');
+
+              // Wait a bit for session to propagate
+              await new Promise(r => setTimeout(r, 1000));
+
+              const { data: { session }, error: sessionError } = await this.supabase.auth.getSession();
+
+              if (sessionError) {
+                reject(sessionError);
+              } else if (session) {
+                console.log('✅ Session established after popup!');
+                localStorage.setItem('trucoapp_had_auth', 'true');
+                resolve({ success: true, session });
+              } else {
+                reject(new Error('No session after OAuth popup'));
+              }
+            }
+          }, 500);
+
+          // Timeout after 5 minutes
+          setTimeout(() => {
+            clearInterval(checkPopup);
+            if (popup && !popup.closed) {
+              popup.close();
+            }
+            reject(new Error('OAuth timeout'));
+          }, 300000);
+        });
+      }
+
+      return { success: true, data };
+    } else {
+      // BROWSER MODE: Use standard redirect flow
+      console.log('🔐 BROWSER MODE: Using standard redirect flow');
+
+      const { data, error } = await this.supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: promptType,
+          }
+        }
+      });
+
+      if (error) throw error;
+      return { success: true, data };
+    }
   }
 
   // Sign in with Apple (for future implementation)

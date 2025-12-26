@@ -19,6 +19,10 @@ const AuthCallbackPage = () => {
     console.log('📍 Hash:', window.location.hash);
     console.log('📍 Search:', window.location.search);
 
+    // POPUP MODE: If opened as popup (from PWA), close after processing
+    const isPopup = window.opener !== null && window.opener !== window;
+    console.log('🔐 Is popup window:', isPopup);
+
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const queryParams = new URLSearchParams(window.location.search);
 
@@ -120,12 +124,20 @@ const AuthCallbackPage = () => {
       localStorage.setItem('trucoapp_had_auth', 'true');
       setStatus('success');
 
-      // Clean URL and redirect
-      setTimeout(() => {
-        console.log('🔄 Redirecting to home...');
-        window.history.replaceState({}, document.title, '/');
-        window.location.replace('/');
-      }, 1500);
+      // POPUP MODE: Close popup and let parent window handle session
+      if (isPopup) {
+        console.log('🔐 Popup mode: Closing popup after successful auth');
+        setTimeout(() => {
+          window.close();
+        }, 1000);
+      } else {
+        // REDIRECT MODE: Clean URL and redirect
+        setTimeout(() => {
+          console.log('🔄 Redirecting to home...');
+          window.history.replaceState({}, document.title, '/');
+          window.location.replace('/');
+        }, 1500);
+      }
     };
 
     // Also listen for auth state changes as backup
