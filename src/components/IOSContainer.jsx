@@ -8,8 +8,9 @@ const IOSContainer = ({ children, className = '' }) => {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        minHeight: '100dvh',
         height: '100dvh',
+        maxHeight: '100dvh',
+        overflow: 'hidden',
         position: 'relative',
       }}
     >
@@ -27,8 +28,9 @@ export const IOSContentArea = ({ children, className = '', noScroll = false }) =
         overflowY: noScroll ? 'hidden' : 'auto',
         overflowX: 'hidden',
         WebkitOverflowScrolling: 'touch',
-        // Leave space for the fixed tab bar at bottom
-        paddingBottom: 'calc(85px + env(safe-area-inset-bottom, 20px))',
+        // Tab bar is fixed, so we need padding to not overlap content
+        // Use CSS variable for consistency
+        paddingBottom: 'var(--tab-bar-total-height, 100px)',
       }}
     >
       {children}

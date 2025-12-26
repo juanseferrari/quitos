@@ -245,15 +245,17 @@ const ProfileScreen = () => {
   };
 
   return (
-    <ScreenContainer>
-      {/* Header */}
-      <div className="bg-[#0a0a0a] border-b border-[#D4A574] border-opacity-30 px-4 py-4">
-        <h1 className="text-2xl font-bold text-[#D4A574] text-center">
-          MI PERFIL
-        </h1>
-      </div>
+    <ScreenContainer noScroll={true}>
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* Header - Fixed */}
+        <div className="flex-shrink-0 bg-[#0a0a0a] border-b border-[#D4A574] border-opacity-30 px-4 py-3">
+          <h1 className="text-xl font-bold text-[#D4A574] text-center">
+            MI PERFIL
+          </h1>
+        </div>
 
-      <div className="p-4 space-y-6">
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ WebkitOverflowScrolling: 'touch' }}>
         {/* Avatar y Nombre Principal */}
         <div className="bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] rounded-xl p-6 border border-[#D4A574] border-opacity-30 text-center">
           {/* Avatar */}
@@ -565,7 +567,7 @@ const ProfileScreen = () => {
         </div>
 
         {/* Footer con links legales */}
-        <div className="pt-2 pb-8 text-center">
+        <div className="pt-2 pb-4 text-center">
           <p className="text-[#F5DEB3] text-[10px] opacity-40">
             <a
               href="/privacy"
@@ -591,6 +593,7 @@ const ProfileScreen = () => {
               Términos
             </a>
           </p>
+        </div>
         </div>
       </div>
     </ScreenContainer>

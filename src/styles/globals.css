@@ -23,7 +23,7 @@ html, body {
   height: 100%;
   width: 100%;
   position: relative;
-  /* Don't use overflow: hidden here - it clips fixed position children */
+  overflow: hidden;
 }
 
 /* =================================================================

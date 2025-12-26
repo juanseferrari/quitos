@@ -6,14 +6,15 @@ const ScreenContainer = ({ children, className = '', noScroll = false }) => {
     <div
       className={`
         flex flex-col
-        ${noScroll ? 'overflow-hidden' : ''}
+        ${noScroll ? 'overflow-hidden' : 'overflow-y-auto'}
         ${className}
       `}
       style={{
-        // Use CSS variable for consistent height across all screens
-        // This accounts for fixed tab bar + safe area
-        height: 'var(--content-height)',
-        maxHeight: 'var(--content-height)',
+        // Fill all available space from parent
+        height: '100%',
+        maxHeight: '100%',
+        // Prevent content from overflowing
+        ...(noScroll ? {} : { WebkitOverflowScrolling: 'touch' }),
       }}
     >
       {children}

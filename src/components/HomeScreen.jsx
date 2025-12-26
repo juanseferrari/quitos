@@ -41,31 +41,33 @@ const HomeScreen = ({ onNavigateToPlay, onShowAuth }) => {
   };
   
   return (
-    <ScreenContainer>
-      {/* Header */}
-      <div className="bg-[#0a0a0a] border-b border-[#D4A574] border-opacity-30 px-4 py-6">
-        <div className="text-center">
-          <img
-            src="/throne-icon.png"
-            alt="Rey del Truco"
-            className="w-16 h-16 mx-auto mb-2 object-contain"
-          />
-          <h1 className="text-2xl font-bold text-[#D4A574]">
-            REY DEL TRUCO
-          </h1>
-          {isAuthenticated ? (
-            <p className="text-[#F5DEB3] text-sm mt-1">
-              ¡Hola, {user.name || user.username || 'Rey'}!
-            </p>
-          ) : (
-            <p className="text-[#F5DEB3] text-sm mt-1">
-              El anotador inteligente
-            </p>
-          )}
+    <ScreenContainer noScroll={true}>
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* Header - Fixed */}
+        <div className="flex-shrink-0 bg-[#0a0a0a] border-b border-[#D4A574] border-opacity-30 px-4 py-4">
+          <div className="text-center">
+            <img
+              src="/throne-icon.png"
+              alt="Rey del Truco"
+              className="w-12 h-12 mx-auto mb-1 object-contain"
+            />
+            <h1 className="text-xl font-bold text-[#D4A574]">
+              REY DEL TRUCO
+            </h1>
+            {isAuthenticated ? (
+              <p className="text-[#F5DEB3] text-sm">
+                ¡Hola, {user.name || user.username || 'Rey'}!
+              </p>
+            ) : (
+              <p className="text-[#F5DEB3] text-sm">
+                El anotador inteligente
+              </p>
+            )}
+          </div>
         </div>
-      </div>
-      
-      <div className="p-4 space-y-6">
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ WebkitOverflowScrolling: 'touch' }}>
         {/* Acciones Rápidas */}
         <div className="bg-[#2a2a2a] rounded-lg p-6 border border-[#D4A574] border-opacity-20">
           <h2 className="text-lg font-bold text-[#D4A574] mb-6 text-center">
@@ -220,6 +222,7 @@ const HomeScreen = ({ onNavigateToPlay, onShowAuth }) => {
               Términos
             </a>
           </p>
+        </div>
         </div>
       </div>
     </ScreenContainer>

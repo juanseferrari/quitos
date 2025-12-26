@@ -104,3 +104,15 @@ async function testAuth() {
 }
 
 testAuth();
+
+
+
+//
+// Login como usuario mock
+//window.devLogin("juanse@test.com", "Juanse")
+
+// Logout
+//window.devLogout()
+
+// Ver estado actual de auth
+//window.devAuthState()
