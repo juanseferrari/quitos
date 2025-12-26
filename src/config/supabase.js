@@ -2,8 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Supabase configuration - works in both web and iOS
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://pmymvwpgjacrkbimccao.supabase.co';
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBteW12d3BnamFjcmtiaW1jY2FvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNzA3OTksImV4cCI6MjA4MTY0Njc5OX0.PJF9HEINW2DJJmFrYCrM_OkTSH9YoYHjYKVnJuw1o0Y';
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://kkrrqmwvdqnilukjjxbf.supabase.co';
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrcnJxbXd2ZHFuaWx1a2pqeGJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ5NjQzNDEsImV4cCI6MjA1MDU0MDM0MX0.xtWASc_IxFPtJOVr5d8D9TYrmlUCl4Y0XN4YF24Cvm0';
 
 console.log('🔐 Supabase config:', {
   url: supabaseUrl ? 'configured' : 'missing',
@@ -16,7 +16,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Storage key para la sesión de Supabase - use default Supabase key format
-const STORAGE_KEY = `sb-pmymvwpgjacrkbimccao-auth-token`;
+const STORAGE_KEY = `sb-kkrrqmwvdqnilukjjxbf-auth-token`;
 
 // Create Supabase client with simplified configuration
 export const supabase = supabaseUrl && supabaseAnonKey
