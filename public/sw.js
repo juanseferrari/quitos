@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rey-del-truco-v2-pwa-auth-fix';
+const CACHE_NAME = 'rey-del-truco-v3-api-fix';
 const urlsToCache = [
   '/',
   '/static/js/bundle.js',
@@ -46,11 +46,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // CRITICAL: Never cache OAuth/auth routes - they need fresh data
+  // CRITICAL: Never cache OAuth/auth routes AND Supabase API - they need fresh data
   const skipCacheRoutes = [
     '/auth/callback',
     '/oauth/callback',
     'supabase.co/auth',
+    'supabase.co/rest',     // Supabase REST API
+    'supabase.co/storage',  // Supabase Storage API
+    'supabase.co/realtime', // Supabase Realtime
     'accounts.google.com',
     'appleid.apple.com'
   ];
